@@ -43,14 +43,24 @@ DISTFILES += \
 SOURCES += \
     main.cpp \
     utils/fileutils.cpp \
-    managers/voronoimanager.cpp
+    managers/voronoimanager.cpp \
+    data_structures/dcel.cpp \
+    data_structures/beachline.cpp
 
 FORMS += \
     managers/voronoimanager.ui
 
 HEADERS += \
     utils/fileutils.h \
-    managers/voronoimanager.h
+    managers/voronoimanager.h \
+    data_structures/dcel.h \
+    data_structures/vertex.h \
+    data_structures/half_edge.h \
+    data_structures/face.h \
+    data_structures/face.tpp \
+    data_structures/half_edge.tpp \
+    data_structures/vertex.tpp \
+    data_structures/beachline.h
 
 
 
