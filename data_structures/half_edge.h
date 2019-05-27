@@ -14,8 +14,8 @@ namespace Voronoi {
     class HalfEdge {
         public:
             HalfEdge();
-            HalfEdge(const Voronoi::Vertex& origin, const Voronoi::HalfEdge& twin, /*const Voronoi::Face& incidFace,*/
-                     const Voronoi::HalfEdge& next, const Voronoi::HalfEdge& prev);
+            HalfEdge(const Voronoi::Vertex* origin, const Voronoi::HalfEdge* twin, /*const Voronoi::Face& incidFace,*/
+                     const Voronoi::HalfEdge* next, const Voronoi::HalfEdge* prev);
 
             const Voronoi::Vertex& getOrigin() const;
             const Voronoi::HalfEdge& getTwin() const;
@@ -23,6 +23,9 @@ namespace Voronoi {
             const Voronoi::HalfEdge& getNext() const;
             const Voronoi::HalfEdge& getPrev() const;
             void setOrigin(const Voronoi::Vertex& origin);
+            void setTwin(const Voronoi::HalfEdge& twin);
+            void setNext(const Voronoi::HalfEdge& next);
+            void setPrev(const Voronoi::HalfEdge& prev);
 
     private:
             const Voronoi::Vertex* _origin;

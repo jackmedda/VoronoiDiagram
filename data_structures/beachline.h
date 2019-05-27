@@ -2,7 +2,8 @@
 #define BEACHLINE_H
 
 class Event;
-class HalfEdge;
+
+#include "half_edge.h"
 
 #include <math.h>
 
@@ -18,9 +19,12 @@ namespace Voronoi {
         Node *left;
         Node *right;
 
+        int height;
+
         Node() : parent(nullptr), left(nullptr), right(nullptr) {}
-        Node(Node* parent, Node* left, Node* right) :
-            parent(parent), left(left), right(right) {}
+        Node(int height) : parent(nullptr), left(nullptr), right(nullptr), height(height) {}
+        Node(Node* parent, Node* left, Node* right, int height) :
+            parent(parent), left(left), right(right), height(height) {}
     };
 
     /**
@@ -31,10 +35,10 @@ namespace Voronoi {
         std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> breakpoint;
         double xBreakpoint;
 
-        InternalNode(Node* parent, Node* left, Node* right, std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> breakpoint) :
-            Node(parent, left, right), edge(nullptr), breakpoint(breakpoint), xBreakpoint(nan("")) {}
-        InternalNode(Node* parent, Node* left, Node* right, std::pair<cg3::Point2Dd*, cg3::Point2Dd*> breakpoint, double xBreakpoint) :
-            Node(parent, left, right), edge(nullptr), breakpoint(breakpoint), xBreakpoint(xBreakpoint) {}
+        InternalNode(Node* parent, Node* left, Node* right, int height, std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> breakpoint) :
+            Node(parent, left, right, height), edge(nullptr), breakpoint(breakpoint), xBreakpoint(nan("")) {}
+        InternalNode(Node* parent, Node* left, Node* right, int height, std::pair<cg3::Point2Dd*, cg3::Point2Dd*> breakpoint, double xBreakpoint) :
+            Node(parent, left, right, height), edge(nullptr), breakpoint(breakpoint), xBreakpoint(xBreakpoint) {}
     };
 
     /**
@@ -44,9 +48,9 @@ namespace Voronoi {
         const cg3::Point2Dd* site;
         Event* circleEvent;
 
-        Leaf(const cg3::Point2Dd* site) : Node(), site(site), circleEvent(nullptr) {}
+        Leaf(const cg3::Point2Dd* site) : Node(0), site(site), circleEvent(nullptr) {}
         Leaf(Node* parent, Node* left, Node* right, const cg3::Point2Dd* site) :
-            Node(parent, left, right), site(site), circleEvent(nullptr) {}
+            Node(parent, left, right, 0), site(site), circleEvent(nullptr) {}
     };
 
     /**
@@ -58,13 +62,16 @@ namespace Voronoi {
             Beachline(double *sweepline) : root(nullptr), sweepline(sweepline) {}
             ~Beachline() { deleteNode(root); }
 
+            Leaf* findArc(const double x) const;
+            double getValue(Node* _node) const;
+            void makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
+            void addPoint(const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
+
             Node* getRoot() const;
             bool isLeaf(Node* node) const;
             void deleteNode(Node* node);
-            Leaf* findArc(const double x) const;
-            double getValue(Node* _node) const;
-            void makeSubtree(Node* node, const cg3::Point2Dd& p);
-            void addPoint(const cg3::Point2Dd& p);
+            bool isBalanced(const Node* node) const;
+            void updateHeight(Node* node, const int plus);
 
         private:
             Node* root;
@@ -77,6 +84,15 @@ namespace Voronoi {
 
     inline bool Beachline::isLeaf(Node* node) const {
         return node->left && node->right;
+    }
+
+    /**
+     * @brief Beachline::isBalanced
+     * @return true if the Beachline is balanced, false if not
+     */
+    inline bool Beachline::isBalanced(const Node* node) const {
+        return node->left->height - node->right->height <= 1 &&
+                node->left->height - node->right->height >= -1 ? true : false;
     }
 
 }

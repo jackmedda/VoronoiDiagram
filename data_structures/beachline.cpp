@@ -59,20 +59,35 @@ namespace Voronoi {
     /**
      * @brief Beachline::makeSubtree creates a subtree for a new siteEvent
      * @param node
+     * @param p: the new site to be added to the Beachline
      */
-    void Beachline::makeSubtree(Node *node, const cg3::Point2Dd& p) {
+    void Beachline::makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges) {
         Leaf* leaf = static_cast<Leaf*>(node);
+        updateHeight(node, 2);
         InternalNode* newNode = new InternalNode(node->parent,
                                                  new Leaf(nullptr, nullptr, nullptr, leaf->site),
                                                  new InternalNode(nullptr,
                                                                   new Leaf(nullptr, nullptr, nullptr, &p),
                                                                   new Leaf(nullptr, nullptr, nullptr, leaf->site),
+                                                                  node->height+1,
                                                                   std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*>(&p, leaf->site)),
+                                                 node->height+2,
                                                  std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*>(leaf->site, &p));
         newNode->left->parent = newNode;
         newNode->right->parent = newNode;
         newNode->right->left = newNode->right;
         newNode->right->right = newNode->right;
+
+        Voronoi::HalfEdge* newEdge = new HalfEdge();
+        edges.push_back(*newEdge);
+        Voronoi::HalfEdge& edge1 = edges.back();
+        edges.push_back(Voronoi::HalfEdge(nullptr, &edge1, nullptr, nullptr));
+        Voronoi::HalfEdge& edge2 = edges.back();
+        edge1.setTwin(edge2);
+
+        newNode->edge = &edge1;
+        static_cast<InternalNode*>(newNode->right)->edge = &edge2;
+
         delete node;
         node = newNode;
     }
@@ -81,12 +96,28 @@ namespace Voronoi {
      * @brief Beachline::addPoint
      * @param point to be added to the beachline
      */
-    void Beachline::addPoint(const cg3::Point2Dd &p) {
+    void Beachline::addPoint(const cg3::Point2Dd &p, std::vector<Voronoi::HalfEdge>& edges) {
         if(!root) {
             root = new Leaf(&p);
         } else {
             Node* arc = findArc(p.x());
-            makeSubtree(arc, p);
+            makeSubtree(arc, p, edges);
+            if(arc->parent->left == arc)
+                arc->parent->left = arc;
+            else
+                arc->parent->right = arc;
+        }
+    }
+
+    /**
+     * @brief Beachline::updateHeight
+     * @param node
+     * @param addHeight
+     */
+    void Beachline::updateHeight(Node* node, const int plus) {
+        while(node->parent != nullptr) {
+            node = node->parent;
+            node->height += plus;
         }
     }
 
