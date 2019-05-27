@@ -19,7 +19,7 @@ namespace Voronoi {
         private:
             std::vector<Vertex> vertexs;
             std::vector<HalfEdge> half_edges;
-            std::vector<Face> faces;
+            //std::vector<Face> faces;
     };
 }
 
