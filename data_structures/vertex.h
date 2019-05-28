@@ -27,4 +27,6 @@ namespace Voronoi {
 
 }
 
+#include "vertex.tpp"
+
 #endif // VERTEX_H

@@ -4,6 +4,7 @@
 class Event;
 
 #include "half_edge.h"
+#include "../mathVoronoi/parabola.h"
 
 #include <math.h>
 

@@ -27,7 +27,7 @@ namespace Voronoi {
             void setNext(const Voronoi::HalfEdge& next);
             void setPrev(const Voronoi::HalfEdge& prev);
 
-    private:
+        private:
             const Voronoi::Vertex* _origin;
             const Voronoi::HalfEdge* _twin;
             //const Voronoi::Face* _incidFace;
@@ -36,4 +36,7 @@ namespace Voronoi {
     };
 
 }
+
+#include "half_edge.tpp"
+
 #endif // HALF_EDGE_H

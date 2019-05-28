@@ -1,5 +1,4 @@
 #include "beachline.h"
-#include "../mathVoronoi/parabola.h"
 
 namespace Voronoi {
 
@@ -78,8 +77,7 @@ namespace Voronoi {
         newNode->right->left = newNode->right;
         newNode->right->right = newNode->right;
 
-        Voronoi::HalfEdge* newEdge = new HalfEdge();
-        edges.push_back(*newEdge);
+        edges.push_back(Voronoi::HalfEdge(nullptr, nullptr, nullptr, nullptr));
         Voronoi::HalfEdge& edge1 = edges.back();
         edges.push_back(Voronoi::HalfEdge(nullptr, &edge1, nullptr, nullptr));
         Voronoi::HalfEdge& edge2 = edges.back();

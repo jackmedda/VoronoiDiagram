@@ -27,4 +27,6 @@ namespace Voronoi {
 
 }
 
+#include "face.tpp"
+
 #endif // FACE_H
