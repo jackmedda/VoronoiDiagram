@@ -1,22 +1,38 @@
 #include "beachline.h"
+#include <iostream>
 
 namespace Voronoi {
 
-    /**
+/**
      * @brief Beachline::findArc
-     * @param x of the point
+     * @param x of the point to be added
+     * @param _balance: stores the heights of each subtree
+     * @param path: stores a path to the arc with -1 means moving to left child and 1 means moving to right child
+     * @param diff: stores the differences in _balance
      * @return the arc that is vertically above the point
      */
-    Leaf* Beachline::findArc(const double x) const {
+    Leaf* Beachline::findArc(const double x,
+                             std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int& diff) const {
         if(!root)
             return nullptr;
         else {
             Node* node = root;
             while(!isLeaf(node)) {
-                if(x < getValue(node))
+                if(x < getValue(node)) {
                     node = node->left;
-                else
+                    path.push_back(-1);
+                    if (!isLeaf(node)) {
+                        diff += node->left->height - node->right->height;
+                        _balance.push_back(std::pair<int,int>(node->left->height, node->right->height));
+                    }
+                } else {
                     node = node->right;
+                    path.push_back(1);
+                    if (!isLeaf(node)) {
+                        diff += node->right->height - node->left->height;
+                        _balance.push_back(std::pair<int,int>(node->right->height, node->left->height));
+                    }
+                }
             }
             return static_cast<Leaf*>(node);
         }
@@ -62,21 +78,22 @@ namespace Voronoi {
      */
     void Beachline::makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges) {
         Leaf* leaf = static_cast<Leaf*>(node);
-        updateHeight(node, 2);
         InternalNode* newNode = new InternalNode(node->parent,
                                                  new Leaf(nullptr, nullptr, nullptr, leaf->site),
                                                  new InternalNode(nullptr,
                                                                   new Leaf(nullptr, nullptr, nullptr, &p),
                                                                   new Leaf(nullptr, nullptr, nullptr, leaf->site),
-                                                                  node->height+1,
+                                                                  1,
                                                                   std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*>(&p, leaf->site)),
-                                                 node->height+2,
+                                                 2,
                                                  std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*>(leaf->site, &p));
+        //Connecting the parent for each new Node
         newNode->left->parent = newNode;
         newNode->right->parent = newNode;
-        newNode->right->left = newNode->right;
-        newNode->right->right = newNode->right;
+        newNode->right->left->parent = newNode->right;
+        newNode->right->right->parent = newNode->right;
 
+        //HalfEdges creation and pointers added to each breakpoint in Beachline
         edges.push_back(Voronoi::HalfEdge(nullptr, nullptr, nullptr, nullptr));
         Voronoi::HalfEdge& edge1 = edges.back();
         edges.push_back(Voronoi::HalfEdge(nullptr, &edge1, nullptr, nullptr));
@@ -85,6 +102,11 @@ namespace Voronoi {
 
         newNode->edge = &edge1;
         static_cast<InternalNode*>(newNode->right)->edge = &edge2;
+
+        if(!isRight(node))
+            node->parent->left = newNode;
+        else
+            node->parent->right = newNode;
 
         delete node;
         node = newNode;
@@ -98,25 +120,69 @@ namespace Voronoi {
         if(!root) {
             root = new Leaf(&p);
         } else {
-            Node* arc = findArc(p.x());
+            //stores the balance of the children for each node visited to find the arc (pair.first takes the
+            std::vector<std::pair<int,int>> _balance;
+            //stores the path to the arc (-1 for left child, 1 for right child)
+            std::vector<int> path;
+            //store the differences of balance, diff += pair.first - pair.second, for each pair
+            int diff = 0;
+            Node* arc = findArc(p.x(), _balance, path, diff);
             makeSubtree(arc, p, edges);
-            if(arc->parent->left == arc)
-                arc->parent->left = arc;
+            //Here heights of the tree have not been updated yet
+            handleRotation(arc, _balance, path, diff);
+        }
+    }
+
+    void Beachline::handleRotation(Node *&arc,
+                                   std::vector<std::pair<int, int> > &_balance, std::vector<int> &path, int diff) {
+        if(arc->height == 1) {
+            if(isRight(arc))
+                rotateLeft(arc->right);
             else
-                arc->parent->right = arc;
+                rotateLeftRight(arc->right);
+        } else {
+            if(!_balance.empty()) {
+                //TODO
+            } else
+                arc->parent->height += 1;
         }
     }
 
     /**
-     * @brief Beachline::updateHeight
-     * @param node
-     * @param addHeight
+     * @brief Beachline::rotateLeft
+     * @param node as center of rotation
      */
-    void Beachline::updateHeight(Node* node, const int plus) {
-        while(node->parent != nullptr) {
-            node = node->parent;
-            node->height += plus;
-        }
+    void Beachline::rotateLeft(Node *&node) {
+        node->parent->right = node->left;
+        if(node->left)
+            node->left->parent = node->parent;
+        node->left = node->parent;
+        Node* temp = node->parent->parent;
+        node->parent->parent = node;
+        node->parent = temp;
+    }
+
+    /**
+     * @brief Beachline::rotateRight
+     * @param node as center of rotation
+     */
+    void Beachline::rotateRight(Node *&node) {
+        node->parent->left = node->right;
+        node->right->parent = node->parent;
+        node->right = node->parent;
+        Node* temp = node->parent->parent;
+        node->parent->parent = node;
+        node->parent = temp;
+    }
+
+    void Beachline::rotateLeftRight(Node *&node) {
+        rotateLeft(node);
+        rotateRight(node);
+    }
+
+    void Beachline::rotateRightLeft(Node *&node) {
+        rotateRight(node);
+        rotateLeft(node);
     }
 
     /**
@@ -128,6 +194,23 @@ namespace Voronoi {
             deleteNode(node->left);
             deleteNode(node->right);
             delete node;
+        }
+    }
+
+    /**
+     * @brief Beachline::inorder Inorder visit of the Beachline
+     * @param node: root of the tree to visit
+     */
+    void Beachline::inorder(Node *node) const {
+        if(node) {
+            inorder(node->left);
+            inorder(node->right);
+            if(isLeaf(node))
+                std::cout<<static_cast<Leaf*>(node)->site;
+            else {
+                InternalNode* print = static_cast<InternalNode*>(node);
+                std::cout<<"<"<<print->breakpoint.first<<"> <"<<print->breakpoint.second<<">";
+            }
         }
     }
 

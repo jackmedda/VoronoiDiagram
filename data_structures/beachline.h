@@ -63,27 +63,44 @@ namespace Voronoi {
             Beachline(double *sweepline) : root(nullptr), sweepline(sweepline) {}
             ~Beachline() { deleteNode(root); }
 
-            Leaf* findArc(const double x) const;
+            Leaf* findArc(const double x,
+                          std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int& diff) const;
             double getValue(Node* _node) const;
             void makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
             void addPoint(const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
 
             Node* getRoot() const;
-            bool isLeaf(Node* node) const;
+            bool isLeaf(const Node* node) const;
+            bool isRight(const Node* node) const;
             void deleteNode(Node* node);
             bool isBalanced(const Node* node) const;
-            void updateHeight(Node* node, const int plus);
-
+            int balance(const Node* node) const;
+            void rotateLeft(Node*& node);
+            void rotateRight(Node*& node);
+            void rotateRightLeft(Node*& node);
+            void rotateLeftRight(Node*& node);
+            void handleRotation(Node*& arc,
+                                std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int diff);
+            void inorder(Node* node) const;
         private:
             Node* root;
             double* sweepline;
     };
 
+    /**
+     * @brief Beachline::getRoot
+     * @return root of the Beachline
+     */
     inline Node* Beachline::getRoot() const {
         return root;
     }
 
-    inline bool Beachline::isLeaf(Node* node) const {
+    /**
+     * @brief Beachline::isLeaf
+     * @param node
+     * @return if the node is a leaf
+     */
+    inline bool Beachline::isLeaf(const Node* node) const {
         return node->left && node->right;
     }
 
@@ -92,8 +109,28 @@ namespace Voronoi {
      * @return true if the Beachline is balanced, false if not
      */
     inline bool Beachline::isBalanced(const Node* node) const {
-        return node->left->height - node->right->height <= 1 &&
-                node->left->height - node->right->height >= -1 ? true : false;
+        return abs(node->right->height - node->left->height) <= 1 ? true : false;
+    }
+
+    /**
+     * @brief Beachline::balance
+     * @param node
+     * @return the balance of the node
+     */
+    inline int Beachline::balance(const Node* node) const {
+        return node->right->height - node->left->height;
+    }
+
+    /**
+     * @brief Beachline::isRight
+     * @param node
+     * @return true if the node is a right child, false if left
+     */
+    inline bool Beachline::isRight(const Node *node) const {
+        if(node->parent)
+            return node->parent->right == node;
+        assert(node->parent == nullptr);
+        throw std::invalid_argument("passed parameter is root");
     }
 
 }
