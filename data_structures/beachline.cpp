@@ -4,7 +4,10 @@
 namespace Voronoi {
 
 /**
-     * @brief Beachline::findArc
+     * @brief Beachline::findArc find the arc where the new subtree needs to be created.
+     *        diff stores the differences in _balance, but only from the first 1.
+     *        If a -1 is encountered, but no 1 was encountered before, diff remains equals to 0.
+     *        diff has a maximum equal to 2, because to rebalance the tree 2 rotations are necessary at most
      * @param x of the point to be added
      * @param _balance: stores the heights of each subtree
      * @param path: stores a path to the arc with -1 means moving to left child and 1 means moving to right child
@@ -17,19 +20,32 @@ namespace Voronoi {
             return nullptr;
         else {
             Node* node = root;
+            bool oneFound = false;
             while(!isLeaf(node)) {
                 if(x < getValue(node)) {
                     node = node->left;
                     path.push_back(-1);
                     if (!isLeaf(node)) {
-                        diff += node->left->height - node->right->height;
+                        int temp = node->left->height - node->right->height;
+                        if(temp == -1 && oneFound)
+                            diff += temp;
+                        if(temp == 1) {
+                            if(!oneFound) oneFound = true;
+                            if(diff!= 2) diff += temp;
+                        }
                         _balance.push_back(std::pair<int,int>(node->left->height, node->right->height));
                     }
                 } else {
                     node = node->right;
                     path.push_back(1);
                     if (!isLeaf(node)) {
-                        diff += node->right->height - node->left->height;
+                        int temp = node->right->height - node->left->height;
+                        if(temp == -1 && oneFound)
+                            diff += temp;
+                        if(temp == 1) {
+                            if(!oneFound) oneFound = true;
+                            if(diff!= 2) diff += temp;
+                        }
                         _balance.push_back(std::pair<int,int>(node->right->height, node->left->height));
                     }
                 }
@@ -128,11 +144,26 @@ namespace Voronoi {
             int diff = 0;
             Node* arc = findArc(p.x(), _balance, path, diff);
             makeSubtree(arc, p, edges);
-            //Here heights of the tree have not been updated yet
-            handleRotation(arc, _balance, path, diff);
+            //Here (in this line of code) heights of the tree have not been updated yet
+            if(arc != root)
+                handleRotation(arc, _balance, path, diff);
         }
     }
 
+    /**
+     * @brief Beachline::handleRotation The rotation has been optimized with respect to the fact that for each new point
+     * a subtree of height 2 needs to be created. The algorithm first categorize the cases in terms of height:
+     * - height 1 only a rotation is peformed on arc.
+     * - height 2 if _balance is empty then no rotation is necessary, because it means arc is a leaf of the root and height of root is updated
+     * - height >= 2 (if _balance is not empty):
+     *      - diff <= 0: if first element of last position of balance is 2 only an update of parents is necessary
+     *                   else only rotation of arc and update of heights
+     *      - diff == 1:
+     * @param arc: the node where the new subtree has been added before
+     * @param _balance: stores the heights of each subtree
+     * @param path: stores a path to the arc with -1 means moving to left child and 1 means moving to right child
+     * @param diff: stores the differences in _balance
+     */
     void Beachline::handleRotation(Node *&arc,
                                    std::vector<std::pair<int, int> > &_balance, std::vector<int> &path, int diff) {
         if(arc->height == 1) {
@@ -142,9 +173,38 @@ namespace Voronoi {
                 rotateLeftRight(arc->right);
         } else {
             if(!_balance.empty()) {
-                //TODO
+                if(diff<=0) {
+                    if(_balance.back().first != 2) {
+                        whichRotation(arc, path.back(), 1);
+                    } else
+                        updateHeight(arc->parent);
+                } else if(diff==1) {
+                    //diff is == 1 because the height of arc->parent is higher than arc->parent->parent->other_child one
+                    if(_balance.back().first - _balance.back().second == 1) {
+                        whichRotation(arc, path.back(), 1);
+                    } else {
+                        //a first rotation on arc
+                        if(_balance.back().first == 2) {
+                            whichRotation(arc, path.back(), 1);
+                        }
+                        //a second (depending on previous if) rotation on the first +1 in balance starting from the tail of _balance - 1
+                        findPlus1AndRotate(arc->parent, _balance, path);
+                    }
+                } else if (diff==2) {
+                    if(_balance.back().first == 1 && _balance.back().second == 1 && (!arc->parent->left || !arc->parent->right)) {
+                                //if the children of arc->parent->parent have same balance and the balance = 1 and
+                                //one the other child of arc->parent is null then the rotation is performed on arc->parent
+                                whichRotation(arc->parent, path[path.size()-2], path[path.size()-1]);
+                                //a second rotation on the first +1 in balance starting from the tail of _balance - 1
+                                findPlus1AndRotate(arc->parent, _balance, path);
+                    } else{
+                        //if the "if" before is not true then the rotation can be performed in arc
+                        whichRotation(arc, path.back(), -1);
+                        findPlus1AndRotate(arc->parent, _balance, path);
+                    }
+                }
             } else
-                arc->parent->height += 1;
+                arc->parent->height += 1; //tree has height equals to 2 and arc is a child of the root
         }
     }
 
@@ -153,6 +213,12 @@ namespace Voronoi {
      * @param node as center of rotation
      */
     void Beachline::rotateLeft(Node *&node) {
+        //heights updates
+        node->height = std::max(node->height, node->parent->height);
+        node->parent->height = node->parent->left ?
+                    std::max(node->parent->left->height, node->left->height) + 1 : node->left->height + 1;
+
+        //rotation algorithm
         node->parent->right = node->left;
         if(node->left)
             node->left->parent = node->parent;
@@ -167,22 +233,88 @@ namespace Voronoi {
      * @param node as center of rotation
      */
     void Beachline::rotateRight(Node *&node) {
+        node->height = std::max(node->height, node->parent->height);
+        node->parent->height = node->parent->right ?
+                    std::max(node->parent->right->height, node->right->height) + 1: node->right->height + 1;
+
+        //rotation algorithm
         node->parent->left = node->right;
-        node->right->parent = node->parent;
+        if(node->right)
+            node->right->parent = node->parent;
         node->right = node->parent;
         Node* temp = node->parent->parent;
         node->parent->parent = node;
         node->parent = temp;
     }
 
+    /**
+     * @brief Beachline::rotateLeftRight
+     * @param node
+     */
     void Beachline::rotateLeftRight(Node *&node) {
         rotateLeft(node);
-        rotateRight(node);
+        rotateRight(node->parent);
     }
 
+    /**
+     * @brief Beachline::rotateRightLeft
+     * @param node
+     */
     void Beachline::rotateRightLeft(Node *&node) {
         rotateRight(node);
-        rotateLeft(node);
+        rotateLeft(node->parent);
+    }
+
+    void Beachline::whichRotation(Node *&node, const int firstPath, const int secondPath) {
+        if(firstPath == 1 && secondPath == 1) {
+            rotateLeft(node);
+            updateHeight(node);
+        } else if (firstPath == -1 && secondPath == -1) {
+            rotateRight(node);
+            updateHeight(node);
+        } else if (firstPath == 1 && secondPath == -1) {
+            rotateRightLeft(node);
+            updateHeight(node->parent);
+        } else {
+            rotateLeftRight(node);
+            updateHeight(node->parent);
+        }
+    }
+
+    /**
+     * @brief Beachline::findPlus1AndRotate finds the first +1 in balance starting from the tail of _balance - 1 and perform the rotation on that node
+     * @param node: the search starts from this node to the root
+     * @param _balance: stores the heights of each subtree
+     * @param path: stores a path to the arc with -1 means moving to left child and 1 means moving to right child
+     */
+    void Beachline::findPlus1AndRotate(Node *&node, const std::vector<std::pair<int,int>>& _balance, const std::vector<int>& path) {
+        size_t index = _balance.size()-1;
+        do {
+            index--;
+            node = node->parent;
+            if((_balance[index].first - _balance[index].second) == 1) {
+                //the rotation is performed on the node with a balance higher of its sibling
+                whichRotation(node, path[index], path[index+1]);
+                break;
+            }
+        } while(index != 0);
+    }
+
+    /**
+     * @brief Beachline::updateHeight updates the height of the parents of the node passed as parameter
+     * @param node
+     */
+    void Beachline::updateHeight(Node *node) {
+        int height = node->height;
+        while(node) {
+            node = node->parent;
+            if(node->height < height + 1) {
+                node->height = height + 1;
+                height += 1;
+            }
+            else
+                return;
+        }
     }
 
     /**

@@ -81,10 +81,14 @@ namespace Voronoi {
             void rotateLeftRight(Node*& node);
             void handleRotation(Node*& arc,
                                 std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int diff);
+            void updateHeight(Node* node);
             void inorder(Node* node) const;
         private:
             Node* root;
             double* sweepline;
+
+            void whichRotation(Node*& node, const int firstPath, const int secondPath);
+            void findPlus1AndRotate(Node*& node, const std::vector<std::pair<int,int>>& _balance, const std::vector<int>& path);
     };
 
     /**
@@ -101,7 +105,7 @@ namespace Voronoi {
      * @return if the node is a leaf
      */
     inline bool Beachline::isLeaf(const Node* node) const {
-        return node->left && node->right;
+        return !node->left && !node->right;
     }
 
     /**
@@ -109,7 +113,11 @@ namespace Voronoi {
      * @return true if the Beachline is balanced, false if not
      */
     inline bool Beachline::isBalanced(const Node* node) const {
-        return abs(node->right->height - node->left->height) <= 1 ? true : false;
+        return !node || !isLeaf(node) ?
+                    (node->right && node->left ?
+                         (abs(balance(node)) <= 1 ? true : false) :
+                         (node->left ? node->left->height <= 1 : node->right ? node->right->height <= 1: false)) :
+                    true;
     }
 
     /**
@@ -118,7 +126,7 @@ namespace Voronoi {
      * @return the balance of the node
      */
     inline int Beachline::balance(const Node* node) const {
-        return node->right->height - node->left->height;
+        return !isLeaf(node) && node->right && node->left ? node->right->height - node->left->height : throw std::invalid_argument("node must have both children");
     }
 
     /**
