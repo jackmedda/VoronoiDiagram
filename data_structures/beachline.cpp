@@ -158,7 +158,17 @@ namespace Voronoi {
      * - height >= 2 (if _balance is not empty):
      *      - diff <= 0: if first element of last position of balance is 2 only an update of parents is necessary
      *                   else only rotation of arc and update of heights
-     *      - diff == 1:
+     *      - diff == 1: if diff == 1 because of the last element of _balance only a rotation of parent is necessary and relative heights update
+     *                   else {
+     *                      if first element of last position of balance is not 2 a first rotation on arc is necessary
+     *                      a (second)(depending on previous if) rotation is performed on the first ancestor with diff = +1,
+     *                      starting from arc->parent to the root, so arc->parent is skipped, because if the previous if is true,
+     *                      then a rotation on arc isn't performed because arc->parent is balanced, and if the previous if is false,
+     *                      then a rotation on arc is performed, and arc takes place of arc->parent --> a rotation is necessary in one of ancestors
+     *                   }
+     *      - diff == 2: if last element of _balance is (1,1) and other child of arc->parent is null, then
+     *                   a first rotation is performed on arc->parent and a second rotation on one of its ancestors
+     *                   else a first rotation is performed on arc and a second rotation on one of arc->parent ancestors
      * @param arc: the node where the new subtree has been added before
      * @param _balance: stores the heights of each subtree
      * @param path: stores a path to the arc with -1 means moving to left child and 1 means moving to right child
@@ -181,10 +191,10 @@ namespace Voronoi {
                 } else if(diff==1) {
                     //diff is == 1 because the height of arc->parent is higher than arc->parent->parent->other_child one
                     if(_balance.back().first - _balance.back().second == 1) {
-                        whichRotation(arc, path.back(), 1);
+                        whichRotation(arc->parent, path[path.size()-2], path.back());
                     } else {
                         //a first rotation on arc
-                        if(_balance.back().first == 2) {
+                        if(_balance.back().first != 2) {
                             whichRotation(arc, path.back(), 1);
                         }
                         //a second (depending on previous if) rotation on the first +1 in balance starting from the tail of _balance - 1
@@ -194,13 +204,19 @@ namespace Voronoi {
                     if(_balance.back().first == 1 && _balance.back().second == 1 && (!arc->parent->left || !arc->parent->right)) {
                                 //if the children of arc->parent->parent have same balance and the balance = 1 and
                                 //one the other child of arc->parent is null then the rotation is performed on arc->parent
-                                whichRotation(arc->parent, path[path.size()-2], path[path.size()-1]);
+                                whichRotation(arc->parent, path[path.size()-2], path.back());
                                 //a second rotation on the first +1 in balance starting from the tail of _balance - 1
-                                findPlus1AndRotate(arc->parent, _balance, path);
-                    } else{
+                                if (path[path.size()-1] == path.back())
+                                    findPlus1AndRotate(arc->parent, _balance, path);
+                                else //in case of LeftRight or RightLeft rotation in previous code line, then arc becomes arc->parent
+                                    findPlus1AndRotate(arc, _balance, path);
+                    } else {
                         //if the "if" before is not true then the rotation can be performed in arc
-                        whichRotation(arc, path.back(), -1);
-                        findPlus1AndRotate(arc->parent, _balance, path);
+                        whichRotation(arc, path.back(), 1);
+                        if (path.back() == 1) //in case of Left rotation in previous code line, then arc becomes arc->parent
+                            findPlus1AndRotate(arc, _balance, path);
+                        else
+                            findPlus1AndRotate(arc->parent, _balance, path);
                     }
                 }
             } else
@@ -253,7 +269,7 @@ namespace Voronoi {
      */
     void Beachline::rotateLeftRight(Node *&node) {
         rotateLeft(node);
-        rotateRight(node->parent);
+        rotateRight(node);
     }
 
     /**
@@ -262,9 +278,15 @@ namespace Voronoi {
      */
     void Beachline::rotateRightLeft(Node *&node) {
         rotateRight(node);
-        rotateLeft(node->parent);
+        rotateLeft(node);
     }
 
+    /**
+     * @brief Beachline::whichRotation rotate the node with respect of the values of firstPath and of secondPath
+     * @param node: the node to rotate
+     * @param firstPath: represent if the node is a left (-1) or right (1) child
+     * @param secondPath: represent which of the children of node unbalance the tree, with -1 as left child and 1 as right child
+     */
     void Beachline::whichRotation(Node *&node, const int firstPath, const int secondPath) {
         if(firstPath == 1 && secondPath == 1) {
             rotateLeft(node);
@@ -295,7 +317,7 @@ namespace Voronoi {
             if((_balance[index].first - _balance[index].second) == 1) {
                 //the rotation is performed on the node with a balance higher of its sibling
                 whichRotation(node, path[index], path[index+1]);
-                break;
+                return;
             }
         } while(index != 0);
     }
