@@ -49,7 +49,9 @@ SOURCES += \
     data_structures/face.tpp \
     data_structures/dcel.cpp \
     data_structures/beachline.cpp \
-    mathVoronoi/parabola.cpp
+    mathVoronoi/parabola.cpp \
+    mathVoronoi/circle.cpp \
+    alghoritms/fortunealgorithm.cpp
 
 FORMS += \
     managers/voronoimanager.ui
@@ -62,7 +64,9 @@ HEADERS += \
     data_structures/face.h \
     data_structures/dcel.h \
     data_structures/beachline.h \
-    mathVoronoi/parabola.h
+    mathVoronoi/parabola.h \
+    mathVoronoi/circle.h \
+    alghoritms/fortunealgorithm.h
 
 
 

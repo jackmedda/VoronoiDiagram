@@ -2,6 +2,13 @@
 
 namespace Voronoi {
 
+    /**
+     * @brief findIntersectionPoint: find the point/s where the parabolas, with p1 and p2 as focuses and c as same directrix, intersect
+     * @param p1 focus of first parabola
+     * @param p2 focuse of second parabola
+     * @param c directrix of the 2 parabolas
+     * @return a vector with one or two points of intersection, sorted by x-coordinate
+     */
     std::vector<cg3::Point2Dd> findIntersectionPoint(const cg3::Point2Dd& p1, const cg3::Point2Dd& p2, const double& c) {
         std::vector<cg3::Point2Dd> result;
         //if focuses have same x-coordinate

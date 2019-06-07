@@ -5,10 +5,11 @@ class Event;
 
 #include "half_edge.h"
 #include "../mathVoronoi/parabola.h"
+#include "../mathVoronoi/circle.h"
 
 #include <math.h>
 
-#include <cg3/geometry/2d/point2d.h>
+//#include <cg3/geometry/2d/point2d.h> INCLUDED BY PARABOLA.H, CIRCLE.H AND HALF_EDGE.H
 
 namespace Voronoi {
 
@@ -46,12 +47,15 @@ namespace Voronoi {
      * @brief The Leaf struct, the type for leaves
      */
     struct Leaf : Node {
+        Leaf* prev;
+        Leaf* next;
+
         const cg3::Point2Dd* site;
         Event* circleEvent;
 
-        Leaf(const cg3::Point2Dd* site) : Node(0), site(site), circleEvent(nullptr) {}
-        Leaf(Node* parent, Node* left, Node* right, const cg3::Point2Dd* site) :
-            Node(parent, left, right, 0), site(site), circleEvent(nullptr) {}
+        Leaf(const cg3::Point2Dd* site) : Node(0), prev(nullptr), next(nullptr), site(site), circleEvent(nullptr) {}
+        Leaf(Node* parent, Node* left, Node* right, Leaf* prev, Leaf* next, const cg3::Point2Dd* site) :
+            Node(parent, left, right, 0), prev(prev), next(next), site(site), circleEvent(nullptr) {}
     };
 
     /**
@@ -63,32 +67,32 @@ namespace Voronoi {
             Beachline(double *sweepline) : root(nullptr), sweepline(sweepline) {}
             ~Beachline() { deleteNode(root); }
 
-            Leaf* findArc(const double x,
-                          std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int& diff) const;
-            double getValue(Node* _node) const;
-            void makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
-            void addPoint(const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
+            void addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges);
 
             Node* getRoot() const;
             bool isLeaf(const Node* node) const;
             bool isRight(const Node* node) const;
             void deleteNode(Node* node);
-            bool isBalanced(const Node* node) const;
-            int balance(const Node* node) const;
-            void rotateLeft(Node*& node);
-            void rotateRight(Node*& node);
-            void rotateRightLeft(Node*& node);
-            void rotateLeftRight(Node*& node);
-            void handleRotation(Node*& arc,
-                                std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int diff);
-            void updateHeight(Node* node);
             void inorder(Node* node) const;
         private:
             Node* root;
             double* sweepline;
 
+            Leaf* findArc(const double x,
+                          std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int& diff) const;
+            double getValue(Node* _node) const;
+            void makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
+            void handleRotation(Node*& arc,
+                                std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int diff);
             void whichRotation(Node*& node, const int firstPath, const int secondPath);
             void findPlus1AndRotate(Node*& node, const std::vector<std::pair<int,int>>& _balance, const std::vector<int>& path);
+
+            void rotateLeft(Node*& node);
+            void rotateRight(Node*& node);
+            void rotateRightLeft(Node*& node);
+            void rotateLeftRight(Node*& node);
+
+            void updateHeight(Node* node);
     };
 
     /**
@@ -106,27 +110,6 @@ namespace Voronoi {
      */
     inline bool Beachline::isLeaf(const Node* node) const {
         return !node->left && !node->right;
-    }
-
-    /**
-     * @brief Beachline::isBalanced
-     * @return true if the Beachline is balanced, false if not
-     */
-    inline bool Beachline::isBalanced(const Node* node) const {
-        return !node || !isLeaf(node) ?
-                    (node->right && node->left ?
-                         (abs(balance(node)) <= 1 ? true : false) :
-                         (node->left ? node->left->height <= 1 : node->right ? node->right->height <= 1: false)) :
-                    true;
-    }
-
-    /**
-     * @brief Beachline::balance
-     * @param node
-     * @return the balance of the node
-     */
-    inline int Beachline::balance(const Node* node) const {
-        return !isLeaf(node) && node->right && node->left ? node->right->height - node->left->height : throw std::invalid_argument("node must have both children");
     }
 
     /**
