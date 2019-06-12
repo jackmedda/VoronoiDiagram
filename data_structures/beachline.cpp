@@ -3,6 +3,43 @@
 
 namespace Voronoi {
 
+    Beachline::Beachline(const Beachline& bl) {
+        this->root = copyBeachline(bl.root);
+        updateAttributes(this->root);
+    }
+
+    Beachline::Beachline(Beachline&& bl) {
+        this->root = bl.root;
+        this->sweepline = bl.sweepline;
+
+        bl.root = nullptr;
+        bl.sweepline = nullptr;
+    }
+
+    void Beachline::swap(Beachline& bl) {
+        using std::swap;
+        swap(this->root, bl.root);
+        swap(this->sweepline, bl.sweepline);
+    }
+
+    Beachline& Beachline::operator=(Beachline bl) {
+        Beachline::swap(bl);
+        return *this;
+    }
+
+    Beachline& Beachline::operator=(Beachline&& bl) {
+        deleteNode(this->root);
+
+        std::swap(this->root, bl.root);
+        std::swap(this->sweepline, bl.sweepline);
+
+        return *this;
+    }
+
+    Beachline::~Beachline() {
+        deleteNode(root);
+    }
+
     /**
      * @brief Beachline::findArc find the arc (leaf) where the new subtree needs to be created
      * @param x: x-coordinate of the new point that needs to be added
@@ -95,10 +132,10 @@ namespace Voronoi {
     void Beachline::makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges) {
         Leaf* leaf = static_cast<Leaf*>(node);
         InternalNode* newNode = new InternalNode(node->parent,
-                                                 new Leaf(nullptr, nullptr, nullptr, leaf->prev, nullptr, leaf->site),
+                                                 new Leaf(nullptr, leaf->prev, nullptr, leaf->site),
                                                  new InternalNode(nullptr,
-                                                                  new Leaf(nullptr, nullptr, nullptr, nullptr, nullptr, &p),
-                                                                  new Leaf(nullptr, nullptr, nullptr, nullptr, leaf->next, leaf->site),
+                                                                  new Leaf(nullptr, nullptr, nullptr, &p),
+                                                                  new Leaf(nullptr, nullptr, leaf->next, leaf->site),
                                                                   1,
                                                                   std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*>(&p, leaf->site)),
                                                  2,
@@ -116,14 +153,14 @@ namespace Voronoi {
         static_cast<Leaf*>(newNode->right->right)->prev = static_cast<Leaf*>(newNode->right->left);
 
         //HalfEdges creation and pointers added to each breakpoint in Beachline
-        edges.push_back(Voronoi::HalfEdge(nullptr, nullptr, nullptr, nullptr));
-        Voronoi::HalfEdge& edge1 = edges.back();
-        edges.push_back(Voronoi::HalfEdge(nullptr, &edge1, nullptr, nullptr));
-        Voronoi::HalfEdge& edge2 = edges.back();
-        edge1.setTwin(edge2);
+        size_t lastIndex = edges.size();
+        edges.push_back(Voronoi::HalfEdge());
+        edges.back().setTwin(lastIndex+2);
+        edges.push_back(Voronoi::HalfEdge());
+        edges.back().setTwin(lastIndex+1);
 
-        newNode->edge = &edge1;
-        static_cast<InternalNode*>(newNode->right)->edge = &edge2;
+        newNode->edge = lastIndex+2;
+        static_cast<InternalNode*>(newNode->right)->edge = lastIndex+1;
 
         if(!isRight(node))
             node->parent->left = newNode;
@@ -360,6 +397,104 @@ namespace Voronoi {
         }
     }
 
+    Node* Beachline::copyBeachline(Node* const &node) {
+        Node* _copy = nullptr;
+        if(node) {
+            if(isLeaf(node)) {
+                Leaf* leaf = static_cast<Leaf*>(node);
+                return new Leaf(nullptr, nullptr, nullptr, leaf->site, leaf->circleEvent);
+            } else {
+                InternalNode* intNode = static_cast<InternalNode*>(node);
+                return new InternalNode(nullptr, copyBeachline(intNode->left), copyBeachline(intNode->right), intNode->height, intNode->edge, intNode->breakpoint, intNode->xBreakpoint);
+            }
+        }
+        return _copy;
+    }
+
+
+
+    /**
+     * @brief Beachline::min
+     * @param node
+     * @return minimum of the subtree with node as root
+     */
+    Leaf* Beachline::min(Node* node) const {
+        while(node->left != nullptr)
+            node = node->left;
+        return static_cast<Leaf*>(node);
+    }
+
+    /**
+     * @brief Beachline::max
+     * @param node
+     * @return maximum of the subtree with node as root
+     */
+    Leaf* Beachline::max(Node* node) const {
+        while(node->right != nullptr)
+            node = node->right;
+        return static_cast<Leaf*>(node);
+    }
+
+    /**
+     * @brief Beachline::next
+     * @param node
+     * @return successor of node
+     */
+    Leaf* Beachline::next(Node* node) const {
+        Node* parent;
+
+        if(node->right != nullptr)
+            return min(node->right);
+
+        parent = node->parent;
+
+        while(parent != nullptr && node == parent->right) {
+            node = parent;
+            parent = parent->parent;
+        }
+        return static_cast<Leaf*>(parent);
+    }
+
+    /**
+     * @brief Beachline::prev
+     * @param node
+     * @return predecessor of node
+     */
+    Leaf* Beachline::prev(Node* node) const {
+        Node* parent;
+
+        if(node->left != nullptr)
+            return max(node->left);
+
+        parent = node->parent;
+
+        while(parent != nullptr && node == parent->left) {
+            node = parent;
+            parent = parent->parent;
+        }
+        return static_cast<Leaf*>(parent);
+    }
+
+    /**
+     * @brief Beachline::updateParent support function for the Beachline copy; this function updates parent, prev and next pointers
+     * @param node whose attributes is updated
+     */
+    void Beachline::updateAttributes(Node*& node) {
+        if(node->left) {
+            node->left->parent = node;
+            updateAttributes(node->left);
+        }
+        if(node->right) {
+            node->right->parent = node;
+            updateAttributes(node->right);
+        }
+        if(!node->left && !node->right) {
+            Leaf* leaf = static_cast<Leaf*>(node);
+            leaf->prev = prev(leaf);
+            leaf->next = next(leaf);
+        }
+    }
+
     /**
      * @brief Beachline::inorder Inorder visit of the Beachline
      * @param node: root of the tree to visit
@@ -377,4 +512,4 @@ namespace Voronoi {
         }
     }
 
-}
+} 

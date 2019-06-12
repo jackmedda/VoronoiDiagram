@@ -5,21 +5,21 @@ namespace Voronoi {
 inline Vertex::Vertex() : _coordinates(), _indicEdge() {
 }
 
-inline Vertex::Vertex(const cg3::Point2Dd& coordinates, const Voronoi::HalfEdge& indicEdge) :
-    _coordinates(coordinates), _indicEdge(&indicEdge) {
+inline Vertex::Vertex(const cg3::Point2Dd& coordinates, size_t indicEdge) :
+    _coordinates(coordinates), _indicEdge(indicEdge) {
 }
 
 inline const cg3::Point2Dd& Vertex::getCoordinates() const {
     return _coordinates;
 }
 
-inline const Voronoi::HalfEdge& Vertex::getIndicEdge() const {
-    return *_indicEdge;
+inline size_t Vertex::getIncidEdgeID() const {
+    return _indicEdge;
 }
 
-void Vertex::setIndicEdge(const Voronoi::HalfEdge& indicEdge)
+void Vertex::setIndicEdge(size_t indicEdge)
 {
-    _indicEdge = &indicEdge;
+    _indicEdge = indicEdge;
 }
 
 }

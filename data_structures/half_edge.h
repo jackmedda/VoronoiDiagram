@@ -1,12 +1,10 @@
 #ifndef HALF_EDGE_H
 #define HALF_EDGE_H
 
+#include <stddef.h> //for size_t
+#include <limits>
+
 namespace Voronoi {
-    /**
-     * Forward declaration of Vertex and Face
-     */
-    class Vertex;
-    //class Face;
     /**
      * @class Half_Edge
      * @brief The HalfEdge class
@@ -14,25 +12,23 @@ namespace Voronoi {
     class HalfEdge {
         public:
             HalfEdge();
-            HalfEdge(const Voronoi::Vertex* origin, const Voronoi::HalfEdge* twin, /*const Voronoi::Face& incidFace,*/
-                     const Voronoi::HalfEdge* next, const Voronoi::HalfEdge* prev);
+            HalfEdge(size_t origin, size_t twin,
+                     size_t next, size_t prev);
 
-            const Voronoi::Vertex& getOrigin() const;
-            const Voronoi::HalfEdge& getTwin() const;
-            //const Voronoi::Face& getIncidFace() const;
-            const Voronoi::HalfEdge& getNext() const;
-            const Voronoi::HalfEdge& getPrev() const;
-            void setOrigin(const Voronoi::Vertex& origin);
-            void setTwin(const Voronoi::HalfEdge& twin);
-            void setNext(const Voronoi::HalfEdge& next);
-            void setPrev(const Voronoi::HalfEdge& prev);
+            size_t getOriginID() const;
+            size_t getTwinID() const;
+            size_t getNextID() const;
+            size_t getPrevID() const;
+            void setOrigin(size_t origin);
+            void setTwin(size_t twin);
+            void setNext(size_t next);
+            void setPrev(size_t prev);
 
         private:
-            const Voronoi::Vertex* _origin;
-            const Voronoi::HalfEdge* _twin;
-            //const Voronoi::Face* _incidFace;
-            const Voronoi::HalfEdge* _next;
-            const Voronoi::HalfEdge* _prev;
+            size_t _origin;
+            size_t _twin;
+            size_t _next;
+            size_t _prev;
     };
 
 }

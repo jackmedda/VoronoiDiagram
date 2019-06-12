@@ -8,11 +8,11 @@ class Event;
 #include "../mathVoronoi/circle.h"
 
 #include <math.h>
+#include <limits>
 
 //#include <cg3/geometry/2d/point2d.h> INCLUDED BY PARABOLA.H, CIRCLE.H AND HALF_EDGE.H
 
 namespace Voronoi {
-
     /**
      * @brief The Node struct, base class of the two node types
      */
@@ -33,14 +33,16 @@ namespace Voronoi {
      * @brief The InternalNode struct, the type for internal nodes
      */
     struct InternalNode : Node {
-        HalfEdge* edge;
+        size_t edge;
         std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> breakpoint;
         double xBreakpoint;
 
         InternalNode(Node* parent, Node* left, Node* right, int height, std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> breakpoint) :
-            Node(parent, left, right, height), edge(nullptr), breakpoint(breakpoint), xBreakpoint(nan("")) {}
-        InternalNode(Node* parent, Node* left, Node* right, int height, std::pair<cg3::Point2Dd*, cg3::Point2Dd*> breakpoint, double xBreakpoint) :
-            Node(parent, left, right, height), edge(nullptr), breakpoint(breakpoint), xBreakpoint(xBreakpoint) {}
+            Node(parent, left, right, height), edge(std::numeric_limits<size_t>::max()), breakpoint(breakpoint), xBreakpoint(nan("")) {}
+        InternalNode(Node* parent, Node* left, Node* right, int height, std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> breakpoint, double xBreakpoint) :
+            Node(parent, left, right, height), edge(std::numeric_limits<size_t>::max()), breakpoint(breakpoint), xBreakpoint(xBreakpoint) {}
+        InternalNode(Node* parent, Node* left, Node* right, int height, size_t edge, std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> breakpoint, double xBreakpoint) :
+            Node(parent, left, right, height), edge(edge), breakpoint(breakpoint), xBreakpoint(xBreakpoint) {}
     };
 
     /**
@@ -54,8 +56,10 @@ namespace Voronoi {
         Event* circleEvent;
 
         Leaf(const cg3::Point2Dd* site) : Node(0), prev(nullptr), next(nullptr), site(site), circleEvent(nullptr) {}
-        Leaf(Node* parent, Node* left, Node* right, Leaf* prev, Leaf* next, const cg3::Point2Dd* site) :
-            Node(parent, left, right, 0), prev(prev), next(next), site(site), circleEvent(nullptr) {}
+        Leaf(Node* parent, Leaf* prev, Leaf* next, const cg3::Point2Dd* site) :
+            Node(parent, nullptr, nullptr, 0), prev(prev), next(next), site(site), circleEvent(nullptr) {}
+        Leaf(Node* parent, Leaf* prev, Leaf* next, const cg3::Point2Dd* site, Event* circleEvent) :
+            Node(parent, nullptr, nullptr, 0), prev(prev), next(next), site(site), circleEvent(circleEvent) {}
     };
 
     /**
@@ -65,7 +69,11 @@ namespace Voronoi {
     class Beachline {
         public:
             Beachline(double *sweepline) : root(nullptr), sweepline(sweepline) {}
-            ~Beachline() { deleteNode(root); }
+            Beachline(const Beachline&);
+            Beachline(Beachline&&);
+            Beachline& operator=(Beachline);
+            Beachline& operator=(Beachline&&);
+            virtual ~Beachline();
 
             void addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges);
 
@@ -74,9 +82,15 @@ namespace Voronoi {
             bool isRight(const Node* node) const;
             void deleteNode(Node* node);
             void inorder(Node* node) const;
+            Leaf* min(Node*) const;
+            Leaf* max(Node*) const;
+            Leaf* prev(Node*) const;
+            Leaf* next(Node*) const;
         private:
             Node* root;
             double* sweepline;
+
+            void swap(Beachline&);
 
             Leaf* findArc(const double x,
                           std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int& diff) const;
@@ -93,6 +107,9 @@ namespace Voronoi {
             void rotateLeftRight(Node*& node);
 
             void updateHeight(Node* node);
+
+            Node* copyBeachline(Node* const &node);
+            void updateAttributes(Node*&);
     };
 
     /**

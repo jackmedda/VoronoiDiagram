@@ -5,24 +5,20 @@
 
 namespace Voronoi {
     /**
-     * Forward declaration of HalfEdge
-     */
-    class HalfEdge;
-    /**
      * @class Vertex
      * @brief The Vertex class models a DCEL Vertex
      */
     class Vertex {
         public:
             Vertex();
-            Vertex(const cg3::Point2Dd& coordinates, const Voronoi::HalfEdge& indicEdge);
+            Vertex(const cg3::Point2Dd& coordinates, size_t indicEdge);
 
             const cg3::Point2Dd& getCoordinates() const;
-            const Voronoi::HalfEdge& getIndicEdge() const;
-            void setIndicEdge(const Voronoi::HalfEdge& indicEdge);
+            size_t getIncidEdgeID() const;
+            void setIndicEdge(size_t indicEdge);
     private:
             cg3::Point2Dd _coordinates;
-            const Voronoi::HalfEdge* _indicEdge;
+            size_t _indicEdge;
     };
 
 }

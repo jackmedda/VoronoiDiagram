@@ -46,12 +46,10 @@ SOURCES += \
     managers/voronoimanager.cpp \
     data_structures/vertex.tpp \
     data_structures/half_edge.tpp \
-    data_structures/face.tpp \
     data_structures/dcel.cpp \
     data_structures/beachline.cpp \
     mathVoronoi/parabola.cpp \
-    mathVoronoi/circle.cpp \
-    alghoritms/fortunealgorithm.cpp
+    mathVoronoi/circle.cpp
 
 FORMS += \
     managers/voronoimanager.ui
@@ -61,12 +59,10 @@ HEADERS += \
     managers/voronoimanager.h \
     data_structures/vertex.h \
     data_structures/half_edge.h \
-    data_structures/face.h \
     data_structures/dcel.h \
     data_structures/beachline.h \
     mathVoronoi/parabola.h \
-    mathVoronoi/circle.h \
-    alghoritms/fortunealgorithm.h
+    mathVoronoi/circle.h
 
 
 
