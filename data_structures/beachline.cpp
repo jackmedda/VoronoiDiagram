@@ -128,8 +128,9 @@ namespace Voronoi {
      * @brief Beachline::makeSubtree creates a subtree for a new siteEvent
      * @param node
      * @param p: the new site to be added to the Beachline
+     * @return the pointer to the circleEvent to check if it is a false alarm
      */
-    void Beachline::makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges) {
+    Event* Beachline::makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges) {
         Leaf* leaf = static_cast<Leaf*>(node);
         InternalNode* newNode = new InternalNode(node->parent,
                                                  new Leaf(nullptr, leaf->prev, nullptr, leaf->site),
@@ -167,8 +168,12 @@ namespace Voronoi {
         else
             node->parent->right = newNode;
 
+        Event* cEvent = leaf->circleEvent;
+
         delete node;
         node = newNode;
+
+        return cEvent;
     }
 
     /**
@@ -177,9 +182,10 @@ namespace Voronoi {
      * @param newPoint: the reference to the leaf representing the new point, it will be used to check circle events
      * @param edges: the vector containing the edges of the Voronoi diagram
      */
-    void Beachline::addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges) {
+    Event* Beachline::addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges) {
         if(!root) {
             root = new Leaf(&p);
+            return nullptr;
         } else {
             //stores the balance of the children for each node visited to find the arc (pair.first takes the
             std::vector<std::pair<int,int>> _balance;
@@ -188,12 +194,14 @@ namespace Voronoi {
             //store the differences of balance, diff += (pair.first - pair.second), for each pair
             int diff = 0;
             Node* arc = findArc(p.x(), _balance, path, diff);
-            makeSubtree(arc, p, edges);
+            Event* cEvent = makeSubtree(arc, p, edges);
             newPoint = static_cast<Leaf*>(arc->right->left);
             //Here (in this line of code) heights of the tree have not been updated yet
             if(arc != root) {
                 handleRotation(arc, _balance, path, diff);
             }
+
+            return cEvent;
         }
     }
 

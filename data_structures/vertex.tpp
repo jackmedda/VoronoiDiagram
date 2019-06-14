@@ -2,11 +2,11 @@
 
 namespace Voronoi {
 
-inline Vertex::Vertex() : _coordinates(), _indicEdge() {
+inline Vertex::Vertex() : _coordinates(), _incidEdge() {
 }
 
-inline Vertex::Vertex(const cg3::Point2Dd& coordinates, size_t indicEdge) :
-    _coordinates(coordinates), _indicEdge(indicEdge) {
+inline Vertex::Vertex(const cg3::Point2Dd& coordinates, size_t incidEdge) :
+    _coordinates(coordinates), _incidEdge(incidEdge) {
 }
 
 inline const cg3::Point2Dd& Vertex::getCoordinates() const {
@@ -14,12 +14,11 @@ inline const cg3::Point2Dd& Vertex::getCoordinates() const {
 }
 
 inline size_t Vertex::getIncidEdgeID() const {
-    return _indicEdge;
+    return _incidEdge;
 }
 
-void Vertex::setIndicEdge(size_t indicEdge)
-{
-    _indicEdge = indicEdge;
+inline void Vertex::setIncidEdge(size_t incidEdge) {
+    _incidEdge = incidEdge;
 }
 
 }

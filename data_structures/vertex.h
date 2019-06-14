@@ -11,14 +11,14 @@ namespace Voronoi {
     class Vertex {
         public:
             Vertex();
-            Vertex(const cg3::Point2Dd& coordinates, size_t indicEdge);
+            Vertex(const cg3::Point2Dd& coordinates, size_t incidEdge);
 
             const cg3::Point2Dd& getCoordinates() const;
             size_t getIncidEdgeID() const;
-            void setIndicEdge(size_t indicEdge);
+            void setIncidEdge(size_t incidEdge);
     private:
             cg3::Point2Dd _coordinates;
-            size_t _indicEdge;
+            size_t _incidEdge;
     };
 
 }

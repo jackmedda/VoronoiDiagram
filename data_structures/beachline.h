@@ -1,8 +1,6 @@
 #ifndef BEACHLINE_H
 #define BEACHLINE_H
 
-class Event;
-
 #include "half_edge.h"
 #include "../mathVoronoi/parabola.h"
 #include "../mathVoronoi/circle.h"
@@ -48,6 +46,7 @@ namespace Voronoi {
     /**
      * @brief The Leaf struct, the type for leaves
      */
+    struct Event;
     struct Leaf : Node {
         Leaf* prev;
         Leaf* next;
@@ -75,7 +74,8 @@ namespace Voronoi {
             Beachline& operator=(Beachline&&);
             virtual ~Beachline();
 
-            void addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges);
+            Event* addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges);
+            void clear();
 
             Node* getRoot() const;
             bool isLeaf(const Node* node) const;
@@ -95,7 +95,7 @@ namespace Voronoi {
             Leaf* findArc(const double x,
                           std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int& diff) const;
             double getValue(Node* _node) const;
-            void makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
+            Event* makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
             void handleRotation(Node*& arc,
                                 std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int diff);
             void whichRotation(Node*& node, const int firstPath, const int secondPath);
@@ -139,6 +139,11 @@ namespace Voronoi {
             return node->parent->right == node;
         assert(node->parent == nullptr);
         throw std::invalid_argument("passed parameter is root");
+    }
+
+    inline void Beachline::clear() {
+        deleteNode(root);
+        sweepline = nullptr;
     }
 
 }

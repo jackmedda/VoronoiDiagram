@@ -18,6 +18,6 @@ namespace Voronoi {
      */
     size_t DCEL::addHalfEdge(Voronoi::HalfEdge &HE) {
         halfEdges.push_back(HE);
-        return  halfEdges.size()-1;
+        return halfEdges.size()-1;
     }
 }

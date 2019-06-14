@@ -31,7 +31,6 @@ const cg3::Pointd SCENECENTER(0,0,0);
 //----------------------------------------------------------------------------------------------
 
 
-
 /* ----- Constructors/Destructors ----- */
 
 /**
@@ -119,7 +118,7 @@ void VoronoiManager::computeVoronoiDiagram(const std::vector<cg3::Point2Dd>& inp
     //Here you should call an algorithm (obviously defined in another file!) which
     //fills your output Voronoi Diagram data structure.
     /*****************************************/
-
+    Voronoi::fortuneAlgorithm(inputPoints);
     /*****************************************/
 
     //You should delete this line after you implement the algorithm: it is

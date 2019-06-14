@@ -6,6 +6,8 @@
 #include <cg3/viewer/mainwindow.h>
 
 #include <cg3/viewer/drawable_objects/2d/drawable_bounding_box2d.h>
+#include <../algorithms/voronoidiagram.h>
+#include "../viewer/drawablevoronoidiagram.h"
 
 
 namespace Ui {
@@ -40,7 +42,7 @@ private:
 
     //Declare your attributes here
     /*****************************************/
-
+    Voronoi::DrawableVoronoiDiagram voronoiDiagram;
 
     /*****************************************/
 

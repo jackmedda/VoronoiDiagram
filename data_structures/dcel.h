@@ -16,6 +16,8 @@ namespace Voronoi {
         public:
             DCEL() = default;
 
+            void clear();
+
             //vertexs methods
             const Voronoi::HalfEdge& getIncidEdge(size_t vertexIndex) const;
             size_t addVertex(Voronoi::Vertex& V);
@@ -30,6 +32,11 @@ namespace Voronoi {
             std::vector<Vertex> vertexs;
             std::vector<HalfEdge> halfEdges;
     };
+
+    inline void DCEL::clear() {
+        vertexs.clear();
+        halfEdges.clear();
+    }
 
     inline const Voronoi::HalfEdge& DCEL::getIncidEdge(size_t vertexIndex) const {
         return halfEdges[vertexs[vertexIndex].getIncidEdgeID()];

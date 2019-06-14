@@ -49,7 +49,9 @@ SOURCES += \
     data_structures/dcel.cpp \
     data_structures/beachline.cpp \
     mathVoronoi/parabola.cpp \
-    mathVoronoi/circle.cpp
+    mathVoronoi/circle.cpp \
+    algorithms/voronoidiagram.cpp \
+    viewer/drawablevoronoidiagram.cpp
 
 FORMS += \
     managers/voronoimanager.ui
@@ -62,7 +64,9 @@ HEADERS += \
     data_structures/dcel.h \
     data_structures/beachline.h \
     mathVoronoi/parabola.h \
-    mathVoronoi/circle.h
+    mathVoronoi/circle.h \
+    algorithms/voronoidiagram.h \
+    viewer/drawablevoronoidiagram.h
 
 
 
