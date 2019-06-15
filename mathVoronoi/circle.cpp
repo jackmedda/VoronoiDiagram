@@ -12,7 +12,7 @@ namespace Voronoi {
         double x = 0.5 * (a.x() + (b.x()*m1 - b.y() + c.y() - c.x()*m2)/(m1 - m2));
         double y = 0.5 * (a.y() + b.y() + (2*x - a.x() - b.x())*m1);
 
-        center = cg3::Point2Dd(x,y);
+        center.set(x,y);
 
         return true;
     }
