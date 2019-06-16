@@ -21,7 +21,7 @@ namespace Voronoi {
         const Voronoi::Leaf* arc;
 
         Event(EventType type, const cg3::Point2Dd& point) : type(type), point(point) {}
-        Event(EventType type, const cg3::Point2Dd& point, const cg3::Point2Dd center, Voronoi::Leaf* arc):
+        Event(EventType type, const cg3::Point2Dd& point, const cg3::Point2Dd& center, const Voronoi::Leaf* arc):
             type(type), point(point), center(center), arc(arc) {}
     };
 
@@ -38,7 +38,7 @@ namespace Voronoi {
     };
 
     void fortuneAlgorithm(const std::vector<cg3::Point2Dd>& points);
-
+    Event* checkCircleEvent(const Leaf* l1, const Leaf* l2, const Leaf* l3, const double& sweepline);
 }
 
 #endif // VORONOIDIAGRAM_H

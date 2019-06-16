@@ -5,7 +5,6 @@
 #include "../mathVoronoi/parabola.h"
 #include "../mathVoronoi/circle.h"
 
-#include <math.h>
 #include <limits>
 
 //#include <cg3/geometry/2d/point2d.h> INCLUDED BY PARABOLA.H, CIRCLE.H AND HALF_EDGE.H
@@ -33,14 +32,11 @@ namespace Voronoi {
     struct InternalNode : Node {
         size_t edge;
         std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> breakpoint;
-        double xBreakpoint;
 
         InternalNode(Node* parent, Node* left, Node* right, int height, std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> breakpoint) :
-            Node(parent, left, right, height), edge(std::numeric_limits<size_t>::max()), breakpoint(breakpoint), xBreakpoint(nan("")) {}
-        InternalNode(Node* parent, Node* left, Node* right, int height, std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> breakpoint, double xBreakpoint) :
-            Node(parent, left, right, height), edge(std::numeric_limits<size_t>::max()), breakpoint(breakpoint), xBreakpoint(xBreakpoint) {}
-        InternalNode(Node* parent, Node* left, Node* right, int height, size_t edge, std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> breakpoint, double xBreakpoint) :
-            Node(parent, left, right, height), edge(edge), breakpoint(breakpoint), xBreakpoint(xBreakpoint) {}
+            Node(parent, left, right, height), edge(std::numeric_limits<size_t>::max()), breakpoint(breakpoint) {}
+        InternalNode(Node* parent, Node* left, Node* right, int height, size_t edge, std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> breakpoint) :
+            Node(parent, left, right, height), edge(edge), breakpoint(breakpoint) {}
     };
 
     /**

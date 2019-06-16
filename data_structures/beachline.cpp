@@ -103,23 +103,16 @@ namespace Voronoi {
             return static_cast<Leaf*>(_node)->site->x();
         } else {
             InternalNode* node = static_cast<InternalNode*>(_node);
-            if (!isnan(node->xBreakpoint)) {
-                return node->xBreakpoint;
-            } else {
-                std::vector<cg3::Point2Dd> intPoints = Voronoi::findIntersectionPoint(*node->breakpoint.first, *node->breakpoint.second, *sweepline);
 
-                if(intPoints.size() == 2) {
-                    if (node->breakpoint.first->y() < node->breakpoint.second->y()) {
-                        node->xBreakpoint = intPoints[0].x();
-                        return intPoints[0].x();
-                    } else {
-                        node->xBreakpoint = intPoints[1].x();
-                        return intPoints[1].x();
-                    }
-                } else {
-                    node->xBreakpoint = intPoints[0].x();
+            std::vector<cg3::Point2Dd> intPoints = Voronoi::findIntersectionPoint(*node->breakpoint.first, *node->breakpoint.second, *sweepline);
+
+            if(intPoints.size() == 2) {
+                if (node->breakpoint.first->y() < node->breakpoint.second->y())
+                    return intPoints[1].x();
+                else
                     return intPoints[0].x();
-                }
+            } else {
+                return intPoints[0].x();
             }
         }
     }
@@ -181,6 +174,7 @@ namespace Voronoi {
      * @param p: the point to be added
      * @param newPoint: the reference to the leaf representing the new point, it will be used to check circle events
      * @param edges: the vector containing the edges of the Voronoi diagram
+     * @return the Event linked to the substitued leaf to check for false alarm
      */
     Event* Beachline::addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges) {
         if(!root) {
@@ -405,6 +399,11 @@ namespace Voronoi {
         }
     }
 
+    /**
+     * @brief Beachline::copyBeachline Helper function for copy constructor
+     * @param node
+     * @return
+     */
     Node* Beachline::copyBeachline(Node* const &node) {
         Node* _copy = nullptr;
         if(node) {
@@ -413,13 +412,11 @@ namespace Voronoi {
                 return new Leaf(nullptr, nullptr, nullptr, leaf->site, leaf->circleEvent);
             } else {
                 InternalNode* intNode = static_cast<InternalNode*>(node);
-                return new InternalNode(nullptr, copyBeachline(intNode->left), copyBeachline(intNode->right), intNode->height, intNode->edge, intNode->breakpoint, intNode->xBreakpoint);
+                return new InternalNode(nullptr, copyBeachline(intNode->left), copyBeachline(intNode->right), intNode->height, intNode->edge, intNode->breakpoint);
             }
         }
         return _copy;
     }
-
-
 
     /**
      * @brief Beachline::min

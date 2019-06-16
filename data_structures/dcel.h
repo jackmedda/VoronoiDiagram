@@ -19,10 +19,12 @@ namespace Voronoi {
             void clear();
 
             //vertexs methods
+            std::vector<Vertex>& getVertexs();
             const Voronoi::HalfEdge& getIncidEdge(size_t vertexIndex) const;
             size_t addVertex(Voronoi::Vertex& V);
 
             //halfedges methods
+            std::vector<HalfEdge>& getHalfEdges();
             const Voronoi::Vertex& getHEOrigin(size_t halfEdgeIndex) const;
             const Voronoi::HalfEdge& getHETwin(size_t halfEdgeIndex) const;
             const Voronoi::HalfEdge& getHENext(size_t halfEdgeIndex) const;
@@ -38,8 +40,16 @@ namespace Voronoi {
         halfEdges.clear();
     }
 
+    inline std::vector<Vertex>& DCEL::getVertexs() {
+        return vertexs;
+    }
+
     inline const Voronoi::HalfEdge& DCEL::getIncidEdge(size_t vertexIndex) const {
         return halfEdges[vertexs[vertexIndex].getIncidEdgeID()];
+    }
+
+    inline std::vector<HalfEdge>& DCEL::getHalfEdges() {
+        return halfEdges;
     }
 
     inline const Voronoi::Vertex& DCEL::getHEOrigin(size_t halfEdgeIndex) const {
