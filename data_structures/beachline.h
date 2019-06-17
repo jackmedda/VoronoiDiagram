@@ -71,11 +71,13 @@ namespace Voronoi {
             virtual ~Beachline();
 
             Event* addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges);
+            void removePoint(const Leaf*& circleArc);
             void clear();
 
             Node* getRoot() const;
             bool isLeaf(const Node* node) const;
             bool isRight(const Node* node) const;
+            int balance(const Node* node) const;
             void deleteNode(Node* node);
             void inorder(Node* node) const;
             Leaf* min(Node*) const;
@@ -94,6 +96,7 @@ namespace Voronoi {
             Event* makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
             void handleRotation(Node*& arc,
                                 std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int diff);
+            void rebalanceCE(Node* node);
             void whichRotation(Node*& node, const int firstPath, const int secondPath);
             void findPlus1AndRotate(Node*& node, const std::vector<std::pair<int,int>>& _balance, const std::vector<int>& path);
 
@@ -137,6 +140,25 @@ namespace Voronoi {
         throw std::invalid_argument("passed parameter is root");
     }
 
+    /**
+     * @brief Beachline::balance
+     * @param node
+     * @return the balance of the node
+     */
+    inline int Beachline::balance(const Node *node) const {
+        if(node->left && node->right)
+            return node->right->height - node->left->height;
+        else if(node->right)
+            return 1;
+        else if(node->left)
+            return -1;
+
+        throw std::invalid_argument("passed parameter is a leaf");
+    }
+
+    /**
+     * @brief Beachline::clear clears the Beachline
+     */
     inline void Beachline::clear() {
         deleteNode(root);
         sweepline = nullptr;

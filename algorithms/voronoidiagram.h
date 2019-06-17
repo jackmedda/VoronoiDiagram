@@ -38,7 +38,7 @@ namespace Voronoi {
     };
 
     void fortuneAlgorithm(const std::vector<cg3::Point2Dd>& points);
-    Event* checkCircleEvent(const Leaf* l1, const Leaf* l2, const Leaf* l3, const double& sweepline);
+    Event* checkCircleEvent(const Leaf* l1, Leaf* middleArc, const Leaf* l3, const double& sweepline);
 }
 
 #endif // VORONOIDIAGRAM_H

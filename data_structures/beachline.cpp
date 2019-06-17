@@ -149,12 +149,12 @@ namespace Voronoi {
         //HalfEdges creation and pointers added to each breakpoint in Beachline
         size_t lastIndex = edges.size();
         edges.push_back(Voronoi::HalfEdge());
-        edges.back().setTwin(lastIndex+2);
-        edges.push_back(Voronoi::HalfEdge());
         edges.back().setTwin(lastIndex+1);
+        edges.push_back(Voronoi::HalfEdge());
+        edges.back().setTwin(lastIndex);
 
-        newNode->edge = lastIndex+2;
-        static_cast<InternalNode*>(newNode->right)->edge = lastIndex+1;
+        newNode->edge = lastIndex+1;
+        static_cast<InternalNode*>(newNode->right)->edge = lastIndex;
 
         if(!isRight(node))
             node->parent->left = newNode;
@@ -197,6 +197,46 @@ namespace Voronoi {
 
             return cEvent;
         }
+    }
+
+    void Beachline::removePoint(const Leaf*& circleArc) {
+        const cg3::Point2Dd* siteUpdate;
+        InternalNode* _parent = static_cast<InternalNode*>(circleArc->parent),
+                * _parentUpdate = static_cast<InternalNode*>(circleArc->parent->parent);
+        Node* otherChild;
+
+        //Update the tuples of breakpoints
+        if(_parent->breakpoint.first == circleArc->site)
+            siteUpdate = _parent->breakpoint.second;
+        else
+            siteUpdate = _parent->breakpoint.first;
+
+        if(_parentUpdate->breakpoint.first == circleArc->site)
+            _parentUpdate->breakpoint.first = siteUpdate;
+        else
+            _parentUpdate->breakpoint.second = siteUpdate;
+
+        //Update the attributes of the other nodes (parent, left, right pointers)
+        if(isRight(circleArc)) {
+            otherChild = circleArc->parent->left;
+            otherChild->parent = circleArc->parent->parent;
+            if(isRight(circleArc->parent))
+                circleArc->parent->parent->right = otherChild;
+            else
+                circleArc->parent->parent->left = otherChild;
+        } else {
+            otherChild = circleArc->parent->right;
+            otherChild->parent = circleArc->parent->parent;
+            if(isRight(circleArc->parent))
+                circleArc->parent->parent->right = otherChild;
+            else
+                circleArc->parent->parent->left = otherChild;
+        }
+
+        delete circleArc->parent;
+        delete circleArc;
+
+        rebalanceCE(otherChild);
     }
 
     /**
@@ -270,6 +310,53 @@ namespace Voronoi {
         } else
             arc->parent->height += 1; //tree has height equals to 2 and arc is a child of the root
         //}
+    }
+
+    /**
+     * @brief Beachline::rebalanceCE The sibling t of the arc q (arc that has been removed), once q has been removed,
+     * has a new sibling s, and there are 2 cases to handle:
+     *     - (s-t == 2): it's necessary just a rotation on s
+     *     - (s-t == 0): a rotation could be possible on an ancestor, otherwise all ancestors heights are decreased by 1
+     * With a difference equals to 1 no action needs to be performed
+     * @param node: is the sibling of the removed arc
+     */
+    void Beachline::rebalanceCE(Node* node) {
+        Node* sibling;
+        if(isRight(node))
+            sibling = node->parent->left;
+        else
+            sibling = node->parent->right;
+        switch (sibling->height - node->height) {
+            case 2:
+                if(isRight(node))
+                    rotateRight(node->parent->left);
+                else
+                    rotateLeft(node->parent->right);
+                break;
+            case 0:
+                while(sibling->parent != root) {
+                    sibling = sibling->parent;
+                    sibling->height -= 1;
+                    if(isRight(sibling)) {
+                        if(sibling->parent->left->height - sibling->height == 2) {
+                            if(balance(sibling->parent->left) >= 0)
+                                whichRotation(sibling->parent->left, -1, 1);
+                            else
+                                whichRotation(sibling->parent->left, -1, -1);
+                        } else if(sibling->parent->left->height - sibling->height == 1)
+                            return;
+                    } else {
+                        if(sibling->parent->right->height - sibling->height == 2) {
+                            if(balance(sibling->parent->right) >= 0)
+                                whichRotation(sibling->parent->right, 1, 1);
+                            else
+                                whichRotation(sibling->parent->right, 1, -1);
+                        } else if(sibling->parent->right->height - sibling->height == 1)
+                            return;
+                    }
+                }
+                root->height -= 1;
+        }
     }
 
     /**
