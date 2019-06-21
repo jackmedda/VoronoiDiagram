@@ -25,15 +25,9 @@ namespace Voronoi {
             type(type), point(point), center(center), arc(arc) {}
     };
 
-    struct Point2DComparator {
-        bool operator()(const cg3::Point2Dd& p1, const cg3::Point2Dd& p2) {
-            return p1.y() > p2.y() || (p1.y() - p2.y() < POINT_EPSILON && p1.x() > p2.x());
-        }
-    };
-
     struct EventComparator {
         bool operator()(const Event* e1, const Event* e2) {
-            return Point2DComparator().operator()(e1->point, e2->point);
+            return e1->point.y() < e2->point.y();
         }
     };
 

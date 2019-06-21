@@ -4,6 +4,7 @@
 #include "half_edge.h"
 #include "../mathVoronoi/parabola.h"
 #include "../mathVoronoi/circle.h"
+#include <queue>
 
 #include <limits>
 
@@ -71,15 +72,17 @@ namespace Voronoi {
             virtual ~Beachline();
 
             Event* addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges);
-            void removePoint(const Leaf*& circleArc);
+            InternalNode* removePoint(const Leaf*& circleArc);
             void clear();
 
             Node* getRoot() const;
             bool isLeaf(const Node* node) const;
             bool isRight(const Node* node) const;
             int balance(const Node* node) const;
+            bool isBalanced(const Node* node) const;
             void deleteNode(Node* node);
-            void inorder(Node* node) const;
+            void postorder(Node* node) const;
+            void printLevelOrder(Node* node) const;
             Leaf* min(Node*) const;
             Leaf* max(Node*) const;
             Leaf* prev(Node*) const;
@@ -91,21 +94,22 @@ namespace Voronoi {
             void swap(Beachline&);
 
             Leaf* findArc(const double x,
-                          std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int& diff) const;
+                          std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int& diff, int& last) const;
             double getValue(Node* _node) const;
             Event* makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
-            void handleRotation(Node*& arc,
-                                std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int diff);
+            void handleRotation(Node* arc,
+                                std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int diff, int last);
             void rebalanceCE(Node* node);
-            void whichRotation(Node*& node, const int firstPath, const int secondPath);
-            void findPlus1AndRotate(Node*& node, const std::vector<std::pair<int,int>>& _balance, const std::vector<int>& path);
+            void whichRotation(Node* node, const int firstPath, const int secondPath);
+            void findPlus1AndRotate(Node* node, const std::vector<std::pair<int,int>>& _balance, const std::vector<int>& path);
 
-            void rotateLeft(Node*& node);
-            void rotateRight(Node*& node);
-            void rotateRightLeft(Node*& node);
-            void rotateLeftRight(Node*& node);
+            void rotateLeft(Node* node);
+            void rotateRight(Node* node);
+            void rotateRightLeft(Node* node);
+            void rotateLeftRight(Node* node);
 
             void updateHeight(Node* node);
+            void resetHeight(Node* node);
 
             Node* copyBeachline(Node* const &node);
             void updateAttributes(Node*&);
@@ -145,7 +149,7 @@ namespace Voronoi {
      * @param node
      * @return the balance of the node
      */
-    inline int Beachline::balance(const Node *node) const {
+    inline int Beachline::balance(const Node* node) const {
         if(node->left && node->right)
             return node->right->height - node->left->height;
         else if(node->right)
@@ -154,6 +158,13 @@ namespace Voronoi {
             return -1;
 
         throw std::invalid_argument("passed parameter is a leaf");
+    }
+
+    inline bool Beachline::isBalanced(const Node* node) const {
+        if(!node)
+            return true;
+
+        return (isLeaf(node) ? true : std::abs(balance(node)) < 2) && isBalanced(node->left) && isBalanced(node->right);
     }
 
     /**

@@ -21,7 +21,7 @@ namespace Voronoi {
             //vertexs methods
             std::vector<Vertex>& getVertexs();
             const Voronoi::HalfEdge& getIncidEdge(size_t vertexIndex) const;
-            size_t addVertex(Voronoi::Vertex& V);
+            size_t addVertex(const Voronoi::Vertex& V);
 
             //halfedges methods
             std::vector<HalfEdge>& getHalfEdges();

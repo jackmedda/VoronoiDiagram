@@ -6,7 +6,7 @@ namespace Voronoi {
      * @param V: vertex to add to the DCEL
      * @return the index where the vertex is stored
      */
-    size_t DCEL::addVertex(Voronoi::Vertex &V) {
+    size_t DCEL::addVertex(const Voronoi::Vertex &V) {
         vertexs.push_back(V);
         return vertexs.size()-1;
     }

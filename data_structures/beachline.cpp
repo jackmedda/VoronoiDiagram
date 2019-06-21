@@ -1,5 +1,6 @@
 #include "beachline.h"
 #include <iostream>
+#include <QDebug>
 
 namespace Voronoi {
 
@@ -46,27 +47,31 @@ namespace Voronoi {
      * @param _balance: stores the heights of each subtree
      * @param path: stores a path to the arc with -1 means moving to left child and 1 means moving to right child
      * @param diff: stores the differences in _balance
+     * @param last: stores the last difference in _balance (not 0)
      * @return
      */
     Leaf* Beachline::findArc(const double x,
-                             std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int& diff) const {
+                             std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int& diff, int& last) const {
         if(!root)
             return nullptr;
         else {
             Node* node = root;
             Node* child;
-            bool oneFound = false;
             while(!isLeaf(node)) {
                 if(x < getValue(node)) {
                     child = node->left;
                     path.push_back(-1);
                     if (!isLeaf(child)) {
                         int temp = node->left->height - node->right->height;
-                        if(temp == -1 && oneFound)
-                            diff += temp;
-                        if(temp == 1) {
-                            if(!oneFound) oneFound = true;
-                            if(diff!= 2) diff += temp;
+                        if (temp == -1) {
+                            if (diff != 0)
+                                diff += temp;
+                            last = -1;
+                        }
+                        if (temp == 1) {
+                            if (diff != 2)
+                                diff += temp;
+                            last = 1;
                         }
                         _balance.push_back(std::pair<int,int>(node->left->height, node->right->height));
                     }
@@ -76,11 +81,15 @@ namespace Voronoi {
                     path.push_back(1);
                     if (!isLeaf(child)) {
                         int temp = node->right->height - node->left->height;
-                        if(temp == -1 && oneFound)
-                            diff += temp;
-                        if(temp == 1) {
-                            if(!oneFound) oneFound = true;
-                            if(diff!= 2) diff += temp;
+                        if (temp == -1) {
+                            if (diff != 0)
+                                diff += temp;
+                            last = -1;
+                        }
+                        if (temp == 1) {
+                            if (diff != 2)
+                                diff += temp;
+                            last = 1;
                         }
                         _balance.push_back(std::pair<int,int>(node->right->height, node->left->height));
                     }
@@ -146,6 +155,11 @@ namespace Voronoi {
         static_cast<Leaf*>(newNode->right->left)->next = static_cast<Leaf*>(newNode->right->right);
         static_cast<Leaf*>(newNode->right->right)->prev = static_cast<Leaf*>(newNode->right->left);
 
+        if(leaf->prev)
+            leaf->prev->next = static_cast<Leaf*>(newNode->left);
+        if(leaf->next)
+            leaf->next->prev = static_cast<Leaf*>(newNode->right->right);
+
         //HalfEdges creation and pointers added to each breakpoint in Beachline
         size_t lastIndex = edges.size();
         edges.push_back(Voronoi::HalfEdge());
@@ -156,10 +170,13 @@ namespace Voronoi {
         newNode->edge = lastIndex+1;
         static_cast<InternalNode*>(newNode->right)->edge = lastIndex;
 
-        if(!isRight(node))
-            node->parent->left = newNode;
-        else
-            node->parent->right = newNode;
+        if(node->parent) {
+            if(!isRight(node))
+                node->parent->left = newNode;
+            else
+                node->parent->right = newNode;
+        } else
+            this->root = newNode;
 
         Event* cEvent = leaf->circleEvent;
 
@@ -186,20 +203,21 @@ namespace Voronoi {
             //stores the path to the arc (-1 for left child, 1 for right child)
             std::vector<int> path;
             //store the differences of balance, diff += (pair.first - pair.second), for each pair
-            int diff = 0;
-            Node* arc = findArc(p.x(), _balance, path, diff);
+            int last = 0, diff = 0;
+            Node* arc = findArc(p.x(), _balance, path, diff, last);
             Event* cEvent = makeSubtree(arc, p, edges);
             newPoint = static_cast<Leaf*>(arc->right->left);
+            qDebug () << "Arc: "<<arc;
             //Here (in this line of code) heights of the tree have not been updated yet
             if(arc != root) {
-                handleRotation(arc, _balance, path, diff);
+                handleRotation(arc, _balance, path, diff, last);
             }
 
             return cEvent;
         }
     }
 
-    void Beachline::removePoint(const Leaf*& circleArc) {
+    InternalNode* Beachline::removePoint(const Leaf*& circleArc) {
         const cg3::Point2Dd* siteUpdate;
         InternalNode* _parent = static_cast<InternalNode*>(circleArc->parent),
                 * _parentUpdate = static_cast<InternalNode*>(circleArc->parent->parent);
@@ -211,7 +229,7 @@ namespace Voronoi {
         else
             siteUpdate = _parent->breakpoint.first;
 
-        if(_parentUpdate->breakpoint.first == circleArc->site)
+        if(_parentUpdate->breakpoint.first == circleArc->site || _parentUpdate->breakpoint.first == siteUpdate)
             _parentUpdate->breakpoint.first = siteUpdate;
         else
             _parentUpdate->breakpoint.second = siteUpdate;
@@ -237,6 +255,8 @@ namespace Voronoi {
         delete circleArc;
 
         rebalanceCE(otherChild);
+
+        return _parentUpdate;
     }
 
     /**
@@ -244,7 +264,7 @@ namespace Voronoi {
      * a subtree of height 2 needs to be created. The algorithm first categorize the cases in terms of height:
      * - height 2 if _balance is empty then no rotation is necessary, because it means arc is a leaf of the root and height of root is updated
      * - height >= 2 (if _balance is not empty):
-     *      - diff <= 0: if first element of last position of balance is 2 only an update of parents is necessary
+     *      - diff == 0: if first element of last position of balance is 2 only an update of parents is necessary
      *                   else only rotation of arc and update of heights
      *      - diff == 1: if diff == 1 because of the last element of _balance only a rotation of parent is necessary and relative heights update
      *                   else {
@@ -261,54 +281,49 @@ namespace Voronoi {
      * @param _balance: stores the heights of each subtree
      * @param path: stores a path to the arc with -1 means moving to left child and 1 means moving to right child
      * @param diff: stores the differences in _balance
+     * @param last: stores the last difference in _balance (not 0)
      */
-    void Beachline::handleRotation(Node *&arc,
-                                   std::vector<std::pair<int, int> > &_balance, std::vector<int> &path, int diff) {
+    void Beachline::handleRotation(Node *_arc,
+                                   std::vector<std::pair<int, int> > &_balance, std::vector<int> &path, int diff, int last) {
         /*if(arc->height == 1) {
             if(isRight(arc))
                 rotateLeft(arc->right);         CAN'T HAPPEN THAT BEACHLINE HAS HEIGHT 1
             else
                 rotateLeftRight(arc->right);
         } else {*/
+        Node* arc = _arc;
         if(!_balance.empty()) {
-            if(diff<=0) {
-                if(_balance.back().first != 2) {
-                    whichRotation(arc, path.back(), 1);
-                } else
-                    updateHeight(arc->parent);
-            } else if(diff==1) {
-                //diff is == 1 because the height of arc->parent is higher than arc->parent->parent->other_child one
+            updateHeight(arc);
+            if(diff==0 || last == -1) {
+                if(_balance.back().first != 2)
+                    whichRotation(arc->right, path.back(), 1);
+            } else {
+                //diff is > 1 because the height of arc->parent is higher than arc->parent->parent->other_child one
                 if(_balance.back().first - _balance.back().second == 1) {
-                    whichRotation(arc->parent, path[path.size()-2], path.back());
+                    whichRotation(arc, path[path.size()-2], path.back());
+                    if(diff==2) {
+                        if(path[path.size()-2] == path.back())
+                            findPlus1AndRotate(arc, _balance, path);
+                        else if (path[path.size()-2] == 1 && path.back() == -1)
+                            findPlus1AndRotate(arc->right, _balance, path);
+                        else
+                            findPlus1AndRotate(arc->left, _balance, path);
+                    }
                 } else {
                     //a first rotation on arc
                     if(_balance.back().first != 2) {
-                        whichRotation(arc, path.back(), 1);
-                    }
-                    //a second (depending on previous if) rotation on the first +1 in balance starting from the tail of _balance - 1
-                    findPlus1AndRotate(arc->parent, _balance, path);
-                }
-            } else if (diff==2) {
-                if(_balance.back().first == 1 && _balance.back().second == 1 && (!arc->parent->left || !arc->parent->right)) {
-                            //if the children of arc->parent->parent have same balance and the balance = 1 and
-                            //one the other child of arc->parent is null then the rotation is performed on arc->parent
-                            whichRotation(arc->parent, path[path.size()-2], path.back());
-                            //a second rotation on the first +1 in balance starting from the tail of _balance - 1
-                            if (path[path.size()-1] == path.back())
-                                findPlus1AndRotate(arc->parent, _balance, path);
-                            else //in case of LeftRight or RightLeft rotation in previous code line, then arc becomes arc->parent
-                                findPlus1AndRotate(arc, _balance, path);
-                } else {
-                    //if the "if" before is not true then the rotation can be performed in arc
-                    whichRotation(arc, path.back(), 1);
-                    if (path.back() == 1) //in case of Left rotation in previous code line, then arc becomes arc->parent
-                        findPlus1AndRotate(arc, _balance, path);
-                    else
+                        whichRotation(arc->right, path.back(), 1);
+                        //a second rotation on the first +1 in balance starting from the tail of _balance - 1
+                        //in case of LeftRight or RightLeft rotation in previous code line, then arc becomes arc->parent
+                        path.back() == 1 ? findPlus1AndRotate(arc, _balance, path) :
+                                           findPlus1AndRotate(arc->parent, _balance, path);
+                    } else
                         findPlus1AndRotate(arc->parent, _balance, path);
                 }
             }
+            resetHeight(arc->parent);
         } else
-            arc->parent->height += 1; //tree has height equals to 2 and arc is a child of the root
+            arc->parent->height = 3; //tree has height equals to 2 and arc is a child of the root
         //}
     }
 
@@ -363,11 +378,11 @@ namespace Voronoi {
      * @brief Beachline::rotateLeft
      * @param node as center of rotation
      */
-    void Beachline::rotateLeft(Node *&node) {
+    void Beachline::rotateLeft(Node *node) {
         //heights updates
-        node->height = std::max(node->height, node->parent->height);
         node->parent->height = node->parent->left ?
                     std::max(node->parent->left->height, node->left->height) + 1 : node->left->height + 1;
+        node->height = std::max(node->height, node->parent->height + 1);
 
         //rotation algorithm
         node->parent->right = node->left;
@@ -377,16 +392,22 @@ namespace Voronoi {
         Node* temp = node->parent->parent;
         node->parent->parent = node;
         node->parent = temp;
+
+        //Update of the root
+        if(!temp)
+            root = node;
+        else
+            node->parent->left == node->left ? node->parent->left = node : node->parent->right = node;
     }
 
     /**
      * @brief Beachline::rotateRight
      * @param node as center of rotation
      */
-    void Beachline::rotateRight(Node *&node) {
-        node->height = std::max(node->height, node->parent->height);
+    void Beachline::rotateRight(Node *node) {
         node->parent->height = node->parent->right ?
                     std::max(node->parent->right->height, node->right->height) + 1: node->right->height + 1;
+        node->height = std::max(node->height, node->parent->height + 1);
 
         //rotation algorithm
         node->parent->left = node->right;
@@ -396,13 +417,19 @@ namespace Voronoi {
         Node* temp = node->parent->parent;
         node->parent->parent = node;
         node->parent = temp;
+
+        //Update of the root
+        if(!temp)
+            root = node;
+        else
+            node->parent->right == node->right ? node->parent->right = node : node->parent->left = node;
     }
 
     /**
      * @brief Beachline::rotateLeftRight
      * @param node
      */
-    void Beachline::rotateLeftRight(Node *&node) {
+    void Beachline::rotateLeftRight(Node *node) {
         rotateLeft(node);
         rotateRight(node);
     }
@@ -411,7 +438,7 @@ namespace Voronoi {
      * @brief Beachline::rotateRightLeft
      * @param node
      */
-    void Beachline::rotateRightLeft(Node *&node) {
+    void Beachline::rotateRightLeft(Node *node) {
         rotateRight(node);
         rotateLeft(node);
     }
@@ -422,20 +449,19 @@ namespace Voronoi {
      * @param firstPath: represent if the node is a left (-1) or right (1) child
      * @param secondPath: represent which of the children of node unbalance the tree, with -1 as left child and 1 as right child
      */
-    void Beachline::whichRotation(Node *&node, const int firstPath, const int secondPath) {
-        if(firstPath == 1 && secondPath == 1) {
-            rotateLeft(node);
-            updateHeight(node);
-        } else if (firstPath == -1 && secondPath == -1) {
-            rotateRight(node);
-            updateHeight(node);
-        } else if (firstPath == 1 && secondPath == -1) {
-            rotateRightLeft(node);
-            updateHeight(node->parent);
-        } else {
-            rotateLeftRight(node);
-            updateHeight(node->parent);
+    void Beachline::whichRotation(Node *node, const int firstPath, const int secondPath) {
+        if(firstPath == 1 && secondPath == 1)
+            rotateLeft(node->parent);
+        else if (firstPath == -1 && secondPath == -1)
+            rotateRight(node->parent);
+        else if (firstPath == 1 && secondPath == -1) {
+            if(isLeaf(node->right) && node->parent->right->height > 1)
+                rotateLeft(node->parent);
+            else
+                rotateRightLeft(node);
         }
+        else
+            rotateLeftRight(node);
     }
 
     /**
@@ -444,17 +470,19 @@ namespace Voronoi {
      * @param _balance: stores the heights of each subtree
      * @param path: stores a path to the arc with -1 means moving to left child and 1 means moving to right child
      */
-    void Beachline::findPlus1AndRotate(Node *&node, const std::vector<std::pair<int,int>>& _balance, const std::vector<int>& path) {
-        size_t index = _balance.size()-1;
+    void Beachline::findPlus1AndRotate(Node *node, const std::vector<std::pair<int,int>>& _balance, const std::vector<int>& path) {
+        size_t index = _balance.size()-2;
         do {
-            index--;
-            node = node->parent;
             if((_balance[index].first - _balance[index].second) == 1) {
                 //the rotation is performed on the node with a balance higher of its sibling
                 whichRotation(node, path[index], path[index+1]);
                 return;
             }
-        } while(index != 0);
+            if(index == 0)
+                return;
+            index--;
+            node = node->parent;
+        } while(true);
     }
 
     /**
@@ -463,7 +491,7 @@ namespace Voronoi {
      */
     void Beachline::updateHeight(Node *node) {
         int height = node->height;
-        while(node) {
+        while(node->parent) {
             node = node->parent;
             if(node->height < height + 1) {
                 node->height = height + 1;
@@ -471,6 +499,17 @@ namespace Voronoi {
             }
             else
                 return;
+        }
+    }
+
+    /**
+     * @brief Beachline::resetHeight heights of parents of node are set to the right value after rotations
+     * @param node
+     */
+    void Beachline::resetHeight(Node* node) {
+        while(node) {
+            node->height = std::max(node->left->height, node->right->height) + 1;
+            node = node->parent;
         }
     }
 
@@ -588,19 +627,67 @@ namespace Voronoi {
     }
 
     /**
-     * @brief Beachline::inorder Inorder visit of the Beachline
+     * @brief Beachline::postorder Postorder visit of the Beachline
      * @param node: root of the tree to visit
      */
-    void Beachline::inorder(Node *node) const {
+    void Beachline::postorder(Node *node) const {
         if(node) {
-            inorder(node->left);
-            inorder(node->right);
-            if(isLeaf(node))
-                std::cout<<static_cast<Leaf*>(node)->site;
+            postorder(node->left);
+            postorder(node->right);
+            if(isLeaf(node)) {
+                Leaf* leaf = static_cast<Leaf*>(node);
+                qDebug() <<leaf->site;
+                //std::cout<<static_cast<Leaf*>(node)->site;
+            }
             else {
                 InternalNode* print = static_cast<InternalNode*>(node);
-                std::cout<<"<"<<print->breakpoint.first<<"> <"<<print->breakpoint.second<<">";
+                qDebug()<<"<"<<print->breakpoint.first<<"> <"<<print->breakpoint.second<<">";
+                //std::cout<<"<"<<print->breakpoint.first<<"> <"<<print->breakpoint.second<<">";
             }
+        }
+    }
+
+    /**
+     * @brief Beachline::printLevelOrder print tree level by level (https://www.geeksforgeeks.org/print-level-order-traversal-line-line/)
+     * @param _root
+     */
+    void Beachline::printLevelOrder(Node *_root) const {
+        if (!_root)
+            return;
+
+        std::queue<Node*> q;
+
+        q.push(_root);
+
+        while (q.empty() == false)
+        {
+            // nodeCount (queue size) indicates number
+            // of nodes at current lelvel.
+            size_t nodeCount = q.size();
+
+            while (nodeCount > 0)
+            {
+                Node* node = q.front();
+                if(isLeaf(node)) {
+                    Leaf* leaf = static_cast<Leaf*>(node);
+                    //qDebug() <<leaf->site;
+                    //std::cout<<leaf->site<<" ";
+                    std::cout<<leaf<<" ";
+                }
+                else {
+                    InternalNode* print = static_cast<InternalNode*>(node);
+                    //qDebug()<<"<"<<print->breakpoint.first<<"> <"<<print->breakpoint.second<<">";
+                    //std::cout<<"<"<<print->breakpoint.first<<"> <"<<print->breakpoint.second<<"> ";
+                    std::cout<<print<<" ";
+                }
+                q.pop();
+                if (node->left)
+                    q.push(node->left);
+                if (node->right)
+                    q.push(node->right);
+                nodeCount--;
+            }
+            std::cout << std::endl;
         }
     }
 
