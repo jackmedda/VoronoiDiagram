@@ -29,8 +29,8 @@ namespace Voronoi {
             const Voronoi::HalfEdge& getHETwin(size_t halfEdgeIndex) const;
             const Voronoi::HalfEdge& getHENext(size_t halfEdgeIndex) const;
             const Voronoi::HalfEdge& getHEPrev(size_t halfEdgeIndex) const;
-            size_t addHalfEdge(Voronoi::HalfEdge& HE);
-        private:
+            size_t addHalfEdge(const Voronoi::HalfEdge& HE);
+        protected:
             std::vector<Vertex> vertexs;
             std::vector<HalfEdge> halfEdges;
     };

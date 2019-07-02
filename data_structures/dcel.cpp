@@ -16,7 +16,7 @@ namespace Voronoi {
      * @param HE: halfEdge to add to the DCEL
      * @return the index where the halfEdge is stored
      */
-    size_t DCEL::addHalfEdge(Voronoi::HalfEdge &HE) {
+    size_t DCEL::addHalfEdge(const Voronoi::HalfEdge &HE) {
         halfEdges.push_back(HE);
         return halfEdges.size()-1;
     }

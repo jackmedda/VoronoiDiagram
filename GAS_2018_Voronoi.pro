@@ -8,7 +8,7 @@ CONFIG(release, debug|release){
     DEFINES -= DEBUG
 
     # Uncomment next line if you want to ignore asserts and got a more optimized binary
-    #CONFIG += FINAL_RELEASE
+    CONFIG += FINAL_RELEASE
 }
 
 # Final release optimization
@@ -51,7 +51,8 @@ SOURCES += \
     mathVoronoi/parabola.cpp \
     mathVoronoi/circle.cpp \
     algorithms/voronoidiagram.cpp \
-    viewer/drawablevoronoidiagram.cpp
+    viewer/drawablevoronoidiagram.cpp \
+    data_structures/event.cpp
 
 FORMS += \
     managers/voronoimanager.ui
@@ -66,7 +67,8 @@ HEADERS += \
     mathVoronoi/parabola.h \
     mathVoronoi/circle.h \
     algorithms/voronoidiagram.h \
-    viewer/drawablevoronoidiagram.h
+    viewer/drawablevoronoidiagram.h \
+    data_structures/event.h
 
 
 

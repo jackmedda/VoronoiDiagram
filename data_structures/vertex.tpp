@@ -5,7 +5,10 @@ namespace Voronoi {
 inline Vertex::Vertex() : _coordinates(), _incidEdge() {
 }
 
-inline Vertex::Vertex(const cg3::Point2Dd& coordinates, size_t incidEdge) :
+inline Vertex::Vertex(const cg3::Point2Dd& coordinates): _coordinates(coordinates), _incidEdge() {
+}
+
+inline Vertex::Vertex(const cg3::Point2Dd& coordinates, const size_t incidEdge) :
     _coordinates(coordinates), _incidEdge(incidEdge) {
 }
 
@@ -19,6 +22,10 @@ inline size_t Vertex::getIncidEdgeID() const {
 
 inline void Vertex::setIncidEdge(size_t incidEdge) {
     _incidEdge = incidEdge;
+}
+
+inline void Vertex::setCoordinates(const cg3::Point2Dd &p) {
+    _coordinates = p;
 }
 
 }

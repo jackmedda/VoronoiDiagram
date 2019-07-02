@@ -1,12 +1,11 @@
 #ifndef BEACHLINE_H
 #define BEACHLINE_H
 
-#include "half_edge.h"
+#include "dcel.h"
 #include "../mathVoronoi/parabola.h"
 #include "../mathVoronoi/circle.h"
+#include "./data_structures/event.h"
 #include <queue>
-
-#include <limits>
 
 //#include <cg3/geometry/2d/point2d.h> INCLUDED BY PARABOLA.H, CIRCLE.H AND HALF_EDGE.H
 
@@ -43,18 +42,17 @@ namespace Voronoi {
     /**
      * @brief The Leaf struct, the type for leaves
      */
-    struct Event;
     struct Leaf : Node {
         Leaf* prev;
         Leaf* next;
 
         const cg3::Point2Dd* site;
-        Event* circleEvent;
+        CircleEvent* circleEvent;
 
         Leaf(const cg3::Point2Dd* site) : Node(0), prev(nullptr), next(nullptr), site(site), circleEvent(nullptr) {}
         Leaf(Node* parent, Leaf* prev, Leaf* next, const cg3::Point2Dd* site) :
             Node(parent, nullptr, nullptr, 0), prev(prev), next(next), site(site), circleEvent(nullptr) {}
-        Leaf(Node* parent, Leaf* prev, Leaf* next, const cg3::Point2Dd* site, Event* circleEvent) :
+        Leaf(Node* parent, Leaf* prev, Leaf* next, const cg3::Point2Dd* site, CircleEvent* circleEvent) :
             Node(parent, nullptr, nullptr, 0), prev(prev), next(next), site(site), circleEvent(circleEvent) {}
     };
 
@@ -71,8 +69,8 @@ namespace Voronoi {
             Beachline& operator=(Beachline&&);
             virtual ~Beachline();
 
-            Event* addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges);
-            InternalNode* removePoint(const Leaf*& circleArc);
+            CircleEvent* addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges);
+            Leaf* removePoint(const CircleEvent* cE, DCEL& dcel);
             void clear();
 
             Node* getRoot() const;
@@ -93,10 +91,10 @@ namespace Voronoi {
 
             void swap(Beachline&);
 
-            Leaf* findArc(const double x,
+            Node* findArc(const double x,
                           std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int& diff, int& last) const;
             double getValue(Node* _node) const;
-            Event* makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
+            CircleEvent* makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges);
             void handleRotation(Node* arc,
                                 std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int diff, int last);
             void rebalanceCE(Node* node);
@@ -160,6 +158,11 @@ namespace Voronoi {
         throw std::invalid_argument("passed parameter is a leaf");
     }
 
+    /**
+     * @brief Beachline::isBalanced check if subtree of node is balanced
+     * @param node
+     * @return
+     */
     inline bool Beachline::isBalanced(const Node* node) const {
         if(!node)
             return true;

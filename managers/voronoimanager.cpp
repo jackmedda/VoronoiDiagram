@@ -41,7 +41,8 @@ VoronoiManager::VoronoiManager(QWidget *parent) :
     ui(new Ui::VoronoiManager),
     mainWindow((cg3::viewer::MainWindow&)*parent),
     boundingBox(cg3::Point2Dd(-BOUNDINGBOX, -BOUNDINGBOX),
-                cg3::Point2Dd(BOUNDINGBOX, BOUNDINGBOX))    
+                cg3::Point2Dd(BOUNDINGBOX, BOUNDINGBOX)),
+    voronoiDiagram()
 {
     //***** NOTE: you probably need to initialize your objects in the constructor *****
 
@@ -56,6 +57,7 @@ VoronoiManager::VoronoiManager(QWidget *parent) :
     //Add the drawable object to the mainWindow.
     //The mainWindow will take care of rendering the bounding box
     mainWindow.pushObj(&boundingBox, "Bounding box");
+    mainWindow.pushObj(&voronoiDiagram, "Voronoi Diagram");
 
     //This updates the canvas (call it whenever you change or
     //add some drawable object)
@@ -94,7 +96,7 @@ VoronoiManager::~VoronoiManager() {
     //
     //Try to avoid using dynamic objects whenever it is possible.
     /*****************************************/
-
+    mainWindow.deleteObj(&voronoiDiagram);
     /*****************************************/
 
     //Delete the bounding box drawable object
@@ -118,12 +120,12 @@ void VoronoiManager::computeVoronoiDiagram(const std::vector<cg3::Point2Dd>& inp
     //Here you should call an algorithm (obviously defined in another file!) which
     //fills your output Voronoi Diagram data structure.
     /*****************************************/
-    Voronoi::fortuneAlgorithm(inputPoints);
+    Voronoi::fortuneAlgorithm(inputPoints, voronoiDiagram, boundingBox);
     /*****************************************/
 
     //You should delete this line after you implement the algorithm: it is
     //just needed to suppress the unused-variable warning
-    CG3_SUPPRESS_WARNING(inputPoints);
+    //CG3_SUPPRESS_WARNING(inputPoints);
 }
 
 /**
@@ -132,7 +134,7 @@ void VoronoiManager::computeVoronoiDiagram(const std::vector<cg3::Point2Dd>& inp
 void VoronoiManager::clearVoronoiDiagram() {
     //Clear here your Voronoi diagram data structure.
     /*****************************************/
-
+    voronoiDiagram.clear();
     /*****************************************/
 }
 

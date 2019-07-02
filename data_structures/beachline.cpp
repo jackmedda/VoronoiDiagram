@@ -1,6 +1,5 @@
 #include "beachline.h"
 #include <iostream>
-#include <QDebug>
 
 namespace Voronoi {
 
@@ -37,6 +36,9 @@ namespace Voronoi {
         return *this;
     }
 
+    /**
+     * @brief Beachline::~Beachline
+     */
     Beachline::~Beachline() {
         deleteNode(root);
     }
@@ -50,7 +52,7 @@ namespace Voronoi {
      * @param last: stores the last difference in _balance (not 0)
      * @return
      */
-    Leaf* Beachline::findArc(const double x,
+    Node* Beachline::findArc(const double x,
                              std::vector<std::pair<int,int>>& _balance, std::vector<int>& path, int& diff, int& last) const {
         if(!root)
             return nullptr;
@@ -64,8 +66,7 @@ namespace Voronoi {
                     if (!isLeaf(child)) {
                         int temp = node->left->height - node->right->height;
                         if (temp == -1) {
-                            if (diff != 0)
-                                diff += temp;
+                            diff = 0;
                             last = -1;
                         }
                         if (temp == 1) {
@@ -82,8 +83,7 @@ namespace Voronoi {
                     if (!isLeaf(child)) {
                         int temp = node->right->height - node->left->height;
                         if (temp == -1) {
-                            if (diff != 0)
-                                diff += temp;
+                            diff = 0;
                             last = -1;
                         }
                         if (temp == 1) {
@@ -96,7 +96,7 @@ namespace Voronoi {
                     node = child;
                 }
             }
-            return static_cast<Leaf*>(node);
+            return node;
         }
     }
 
@@ -105,7 +105,7 @@ namespace Voronoi {
      * @param _node which value is returned
      * @return value of the node:
      *  - if Leaf returns site.x
-     *  - if InternalNode returns xBreakpoint, but if it is NaN the breakpoint is computed and then xBreakpoint is set
+     *  - if InternalNode returns intersections of parabolas
      */
     double Beachline::getValue(Node* _node) const {
         if(isLeaf(_node)) {
@@ -132,7 +132,7 @@ namespace Voronoi {
      * @param p: the new site to be added to the Beachline
      * @return the pointer to the circleEvent to check if it is a false alarm
      */
-    Event* Beachline::makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges) {
+    CircleEvent* Beachline::makeSubtree(Node*& node, const cg3::Point2Dd& p, std::vector<Voronoi::HalfEdge>& edges) {
         Leaf* leaf = static_cast<Leaf*>(node);
         InternalNode* newNode = new InternalNode(node->parent,
                                                  new Leaf(nullptr, leaf->prev, nullptr, leaf->site),
@@ -167,8 +167,8 @@ namespace Voronoi {
         edges.push_back(Voronoi::HalfEdge());
         edges.back().setTwin(lastIndex);
 
-        newNode->edge = lastIndex+1;
-        static_cast<InternalNode*>(newNode->right)->edge = lastIndex;
+        newNode->edge = lastIndex;
+        static_cast<InternalNode*>(newNode->right)->edge = lastIndex+1;
 
         if(node->parent) {
             if(!isRight(node))
@@ -178,7 +178,7 @@ namespace Voronoi {
         } else
             this->root = newNode;
 
-        Event* cEvent = leaf->circleEvent;
+        CircleEvent* cEvent = leaf->circleEvent;
 
         delete node;
         node = newNode;
@@ -193,7 +193,7 @@ namespace Voronoi {
      * @param edges: the vector containing the edges of the Voronoi diagram
      * @return the Event linked to the substitued leaf to check for false alarm
      */
-    Event* Beachline::addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges) {
+    CircleEvent* Beachline::addPoint(const cg3::Point2Dd& p, Leaf*& newPoint, std::vector<Voronoi::HalfEdge>& edges) {
         if(!root) {
             root = new Leaf(&p);
             return nullptr;
@@ -205,9 +205,8 @@ namespace Voronoi {
             //store the differences of balance, diff += (pair.first - pair.second), for each pair
             int last = 0, diff = 0;
             Node* arc = findArc(p.x(), _balance, path, diff, last);
-            Event* cEvent = makeSubtree(arc, p, edges);
+            CircleEvent* cEvent = makeSubtree(arc, p, edges);
             newPoint = static_cast<Leaf*>(arc->right->left);
-            qDebug () << "Arc: "<<arc;
             //Here (in this line of code) heights of the tree have not been updated yet
             if(arc != root) {
                 handleRotation(arc, _balance, path, diff, last);
@@ -217,46 +216,102 @@ namespace Voronoi {
         }
     }
 
-    InternalNode* Beachline::removePoint(const Leaf*& circleArc) {
-        const cg3::Point2Dd* siteUpdate;
-        InternalNode* _parent = static_cast<InternalNode*>(circleArc->parent),
-                * _parentUpdate = static_cast<InternalNode*>(circleArc->parent->parent);
+    Leaf* Beachline::removePoint(const CircleEvent* cE, DCEL& dcel) {
+        std::pair<const cg3::Point2Dd*, const cg3::Point2Dd*> oldBreak, newBreak;
+        const Leaf* circleArc = cE->getArc();
+        Leaf* prev = circleArc->prev;
         Node* otherChild;
+        std::vector<HalfEdge>& edges = dcel.getHalfEdges();
+        size_t parentEdge, otherEdge, newEdge;
+        bool isFirstBreakpoint;
+
+        InternalNode* _parent = static_cast<InternalNode*>(circleArc->parent);
+        InternalNode* _otherParent = static_cast<InternalNode*>(_parent->parent);
 
         //Update the tuples of breakpoints
-        if(_parent->breakpoint.first == circleArc->site)
-            siteUpdate = _parent->breakpoint.second;
-        else
-            siteUpdate = _parent->breakpoint.first;
+        if(_parent->breakpoint.first == circleArc->site) {
+            oldBreak = std::make_pair(circleArc->prev->site, circleArc->site);
+            newBreak = std::make_pair(circleArc->prev->site, _parent->breakpoint.second);
+            isFirstBreakpoint = true;
+        }
+        else {
+            oldBreak = std::make_pair(circleArc->site, circleArc->next->site);
+            newBreak = std::make_pair(_parent->breakpoint.first, circleArc->next->site);
+            isFirstBreakpoint = false;
+        }
 
-        if(_parentUpdate->breakpoint.first == circleArc->site || _parentUpdate->breakpoint.first == siteUpdate)
-            _parentUpdate->breakpoint.first = siteUpdate;
-        else
-            _parentUpdate->breakpoint.second = siteUpdate;
+        do {
+            assert(_otherParent);
+            if(_otherParent->breakpoint.first == oldBreak.first && _otherParent->breakpoint.second == oldBreak.second) {
+                break;
+            }
+            _otherParent = static_cast<InternalNode*>(_otherParent->parent);
+        } while(true); //While(true) -> not possible to not find oldBreak in ascendents
+
+        /*****/
+        /*****/
+        /* Lines of code copied from https://github.com/dkotsur/FortuneAlgo implementation
+         * Without these lines the algorithm doesn't work properly, but i changed the epsilon value
+         * With a value equals to 1.0 there are no artifacts in the diagram
+         */
+        double v1 = getValue(_parent), v2 = getValue(_otherParent);
+        if (fabs(v1 - v2) > 1.0) {
+            return nullptr;
+        }
+        /*****/
+        /*****/
+
+        size_t lastVertex = dcel.addVertex(Vertex(cE->getCircleCenter(), _parent->edge));
+
+        parentEdge = _parent->edge;
+        edges[_parent->edge].setOrigin(lastVertex);
+        edges[_otherParent->edge].setOrigin(lastVertex);
+        _otherParent->breakpoint = newBreak;
+        otherEdge = _otherParent->edge;
+
+        //Create new vertex and connect halfEdges to it
+        size_t lastIndex = dcel.addHalfEdge(Voronoi::HalfEdge());
+        edges[lastIndex].setTwin(lastIndex+1);
+        edges[lastIndex].setOrigin(lastVertex);
+        dcel.addHalfEdge(Voronoi::HalfEdge());
+        edges[lastIndex+1].setTwin(lastIndex);
+        _otherParent->edge = lastIndex+1;
+        newEdge = _otherParent->edge;
+
+        //Connect next and prev halfEdges
+        if(isFirstBreakpoint) {
+            edges[parentEdge].setPrev(edges[otherEdge].getTwinID());
+            edges[edges[otherEdge].getTwinID()].setNext(parentEdge);
+            edges[otherEdge].setPrev(edges[newEdge].getTwinID());
+            edges[edges[newEdge].getTwinID()].setNext(otherEdge);
+            edges[newEdge].setPrev(edges[parentEdge].getTwinID());
+            edges[edges[parentEdge].getTwinID()].setNext(newEdge);
+        } else {
+            edges[parentEdge].setPrev(edges[newEdge].getTwinID());
+            edges[edges[newEdge].getTwinID()].setNext(parentEdge);
+            edges[otherEdge].setPrev(edges[parentEdge].getTwinID());
+            edges[edges[parentEdge].getTwinID()].setNext(otherEdge);
+            edges[newEdge].setPrev(edges[otherEdge].getTwinID());
+            edges[edges[otherEdge].getTwinID()].setNext(newEdge);
+        }
 
         //Update the attributes of the other nodes (parent, left, right pointers)
-        if(isRight(circleArc)) {
-            otherChild = circleArc->parent->left;
-            otherChild->parent = circleArc->parent->parent;
-            if(isRight(circleArc->parent))
-                circleArc->parent->parent->right = otherChild;
-            else
-                circleArc->parent->parent->left = otherChild;
-        } else {
+        if(isRight(circleArc))
+            otherChild = circleArc->parent->left;    
+        else
             otherChild = circleArc->parent->right;
-            otherChild->parent = circleArc->parent->parent;
-            if(isRight(circleArc->parent))
-                circleArc->parent->parent->right = otherChild;
-            else
-                circleArc->parent->parent->left = otherChild;
-        }
+        otherChild->parent = circleArc->parent->parent;
+        if(isRight(circleArc->parent))
+            circleArc->parent->parent->right = otherChild;
+        else
+            circleArc->parent->parent->left = otherChild;
 
         delete circleArc->parent;
         delete circleArc;
 
         rebalanceCE(otherChild);
 
-        return _parentUpdate;
+        return prev;
     }
 
     /**
@@ -285,12 +340,6 @@ namespace Voronoi {
      */
     void Beachline::handleRotation(Node *_arc,
                                    std::vector<std::pair<int, int> > &_balance, std::vector<int> &path, int diff, int last) {
-        /*if(arc->height == 1) {
-            if(isRight(arc))
-                rotateLeft(arc->right);         CAN'T HAPPEN THAT BEACHLINE HAS HEIGHT 1
-            else
-                rotateLeftRight(arc->right);
-        } else {*/
         Node* arc = _arc;
         if(!_balance.empty()) {
             updateHeight(arc);
@@ -298,18 +347,39 @@ namespace Voronoi {
                 if(_balance.back().first != 2)
                     whichRotation(arc->right, path.back(), 1);
             } else {
+                size_t psize = path.size();
+                bool _else = true;
                 //diff is > 1 because the height of arc->parent is higher than arc->parent->parent->other_child one
-                if(_balance.back().first - _balance.back().second == 1) {
-                    whichRotation(arc, path[path.size()-2], path.back());
-                    if(diff==2) {
-                        if(path[path.size()-2] == path.back())
-                            findPlus1AndRotate(arc, _balance, path);
-                        else if (path[path.size()-2] == 1 && path.back() == -1)
-                            findPlus1AndRotate(arc->right, _balance, path);
-                        else
-                            findPlus1AndRotate(arc->left, _balance, path);
+                if(psize > 2) {
+                    if(/**/!(path[psize-3] == -1 && path[psize-2] == -1 && path.back() == 1 &&
+                         (_balance[_balance.size()-2].first - _balance[_balance.size()-2].second == 1))/**/ &&
+                            _balance.back().first - _balance.back().second == 1) {
+                        whichRotation(arc, path[psize-2], path.back());
+                        if(diff==2 && _balance.back().first != 2) {
+                            if(path[psize-2] == path.back())
+                                findPlus1AndRotate(arc, _balance, path);
+                            else if (path[psize-2] == 1 && path.back() == -1)
+                                findPlus1AndRotate(arc->right, _balance, path);
+                            else
+                                findPlus1AndRotate(arc->left, _balance, path);
+                        }
+                        _else = false;
                     }
                 } else {
+                    if(_balance.back().first - _balance.back().second == 1) {
+                        whichRotation(arc, path[psize-2], path.back());
+                        if(diff==2 && _balance.back().first != 2) {
+                            if(path[psize-2] == path.back())
+                                findPlus1AndRotate(arc, _balance, path);
+                            else if (path[psize-2] == 1 && path.back() == -1)
+                                findPlus1AndRotate(arc->right, _balance, path);
+                            else
+                                findPlus1AndRotate(arc->left, _balance, path);
+                        }
+                        _else = false;
+                    }
+                }
+                if (_else){
                     //a first rotation on arc
                     if(_balance.back().first != 2) {
                         whichRotation(arc->right, path.back(), 1);
@@ -324,53 +394,51 @@ namespace Voronoi {
             resetHeight(arc->parent);
         } else
             arc->parent->height = 3; //tree has height equals to 2 and arc is a child of the root
-        //}
     }
 
     /**
      * @brief Beachline::rebalanceCE The sibling t of the arc q (arc that has been removed), once q has been removed,
      * has a new sibling s, and there are 2 cases to handle:
-     *     - (s-t == 2): it's necessary just a rotation on s
+     *     - (s-t == 2): it's necessary just a rotation on s if balance of t is 0, otherwise the height of ancestors changed and need to be controlled
      *     - (s-t == 0): a rotation could be possible on an ancestor, otherwise all ancestors heights are decreased by 1
      * With a difference equals to 1 no action needs to be performed
      * @param node: is the sibling of the removed arc
      */
     void Beachline::rebalanceCE(Node* node) {
         Node* sibling;
-        if(isRight(node))
-            sibling = node->parent->left;
-        else
-            sibling = node->parent->right;
-        switch (sibling->height - node->height) {
-            case 2:
-                if(isRight(node))
-                    rotateRight(node->parent->left);
-                else
-                    rotateLeft(node->parent->right);
-                break;
-            case 0:
-                while(sibling->parent != root) {
-                    sibling = sibling->parent;
-                    sibling->height -= 1;
-                    if(isRight(sibling)) {
-                        if(sibling->parent->left->height - sibling->height == 2) {
-                            if(balance(sibling->parent->left) >= 0)
-                                whichRotation(sibling->parent->left, -1, 1);
-                            else
-                                whichRotation(sibling->parent->left, -1, -1);
-                        } else if(sibling->parent->left->height - sibling->height == 1)
-                            return;
-                    } else {
-                        if(sibling->parent->right->height - sibling->height == 2) {
-                            if(balance(sibling->parent->right) >= 0)
-                                whichRotation(sibling->parent->right, 1, 1);
-                            else
-                                whichRotation(sibling->parent->right, 1, -1);
-                        } else if(sibling->parent->right->height - sibling->height == 1)
-                            return;
+
+        while(node->parent) {
+            if(isRight(node))
+                sibling = node->parent->left;
+            else
+                sibling = node->parent->right;
+            switch (sibling->height - node->height) {
+                case 2: {
+                    int path1;
+                    isRight(sibling) ? path1 = 1 : path1 = -1;
+
+                    int bal = balance(sibling);
+                    if(bal == 0) {
+                        path1 == 1 ? whichRotation(sibling->right, 1, 1) : whichRotation(sibling->left, -1, -1);
+                        return;
                     }
+                    else if(bal > 0)
+                        whichRotation(sibling->right, path1, 1);
+                    else
+                        whichRotation(sibling->left, path1, -1);
+                    //After the rotations, the new "root" of subtree is always node->parent->parent
+                    node = node->parent->parent;
+                    break;
                 }
-                root->height -= 1;
+                case 0: {
+                    //if case is 0 node->parent->height depended on subtree containing node
+                    node->parent->height -= 1;
+                    node = node->parent;
+                    break;
+                }
+                default:
+                    return;
+            }
         }
     }
 
@@ -444,7 +512,7 @@ namespace Voronoi {
     }
 
     /**
-     * @brief Beachline::whichRotation rotate the node with respect of the values of firstPath and of secondPath
+     * @brief Beachline::whichRotation rotate the node with respect of the values of firstPath and secondPath
      * @param node: the node to rotate
      * @param firstPath: represent if the node is a left (-1) or right (1) child
      * @param secondPath: represent which of the children of node unbalance the tree, with -1 as left child and 1 as right child
@@ -635,14 +703,11 @@ namespace Voronoi {
             postorder(node->left);
             postorder(node->right);
             if(isLeaf(node)) {
-                Leaf* leaf = static_cast<Leaf*>(node);
-                qDebug() <<leaf->site;
-                //std::cout<<static_cast<Leaf*>(node)->site;
+                std::cout<<static_cast<Leaf*>(node)->site<<" ";
             }
             else {
                 InternalNode* print = static_cast<InternalNode*>(node);
-                qDebug()<<"<"<<print->breakpoint.first<<"> <"<<print->breakpoint.second<<">";
-                //std::cout<<"<"<<print->breakpoint.first<<"> <"<<print->breakpoint.second<<">";
+                std::cout<<"<"<<print->breakpoint.first<<"> <"<<print->breakpoint.second<<"> ";
             }
         }
     }
@@ -670,15 +735,12 @@ namespace Voronoi {
                 Node* node = q.front();
                 if(isLeaf(node)) {
                     Leaf* leaf = static_cast<Leaf*>(node);
-                    //qDebug() <<leaf->site;
-                    //std::cout<<leaf->site<<" ";
+                    std::cout<<leaf->site<<" ";
                     std::cout<<leaf<<" ";
                 }
                 else {
                     InternalNode* print = static_cast<InternalNode*>(node);
-                    //qDebug()<<"<"<<print->breakpoint.first<<"> <"<<print->breakpoint.second<<">";
-                    //std::cout<<"<"<<print->breakpoint.first<<"> <"<<print->breakpoint.second<<"> ";
-                    std::cout<<print<<" ";
+                    std::cout<<"<"<<print->breakpoint.first<<"> <"<<print->breakpoint.second<<"> ";
                 }
                 q.pop();
                 if (node->left)

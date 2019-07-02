@@ -2,13 +2,8 @@
 
 #include "managers/voronoimanager.h"
 
-#include "utils/fileutils.h"
-#include "algorithms/voronoidiagram.h"
-
 int main(int argc, char *argv[]) {
-    std::vector<cg3::Point2Dd> points = FileUtils::getPointsFromFile("../inpu_files/100.txt");
-    Voronoi::fortuneAlgorithm(points);
-    /*CG3_SUPPRESS_WARNING(argc);
+    CG3_SUPPRESS_WARNING(argc);
     CG3_SUPPRESS_WARNING(argv);
 
     QApplication app(argc, argv);
@@ -28,5 +23,5 @@ int main(int argc, char *argv[]) {
     gui.updateGlCanvas();
     gui.show();
 
-    return app.exec();*/
+    return app.exec();
 }

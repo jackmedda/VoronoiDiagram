@@ -6,7 +6,8 @@ namespace Voronoi {
         double m1 = (a.x() - b.x())/(b.y() - a.y()),
                 m2 = (a.x() - c.x())/(c.y() - a.y());
 
-        if(abs(m1-m2) < 1.0e-6)
+        //if points are collinear
+        if(fabs(m1-m2) < 1.0e-6)
             return false;
 
         double x = 0.5 * (a.x() + (b.x()*m1 - b.y() + c.y() - c.x()*m2)/(m1 - m2));

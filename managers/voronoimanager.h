@@ -43,11 +43,7 @@ private:
     //Declare your attributes here
     /*****************************************/
     Voronoi::DrawableVoronoiDiagram voronoiDiagram;
-
     /*****************************************/
-
-
-
 
     /* ----- Private main methods ----- */
 
